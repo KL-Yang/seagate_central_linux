@@ -1,7 +1,7 @@
 From 4d4bd2f221a5cd415959338287b9feab0171361b Mon Sep 17 00:00:00 2001
 From: YangKunlun <yangkunlun@gmail.com>
 Date: Thu, 15 Oct 2015 21:22:40 +0800
-Subject: [PATCH 1/6] add ethernet driver, but not work!
+Subject: [PATCH 1/9] add ethernet driver, but not work!
 
 response to cable plug/unplug!
 ---
@@ -3782,7 +3782,7 @@ index 0000000..f286d0d
 From d3a50ea9deb19790db4b5b93d277536099c1aabc Mon Sep 17 00:00:00 2001
 From: YangKunlun <yangkunlun@gmail.com>
 Date: Fri, 23 Oct 2015 23:03:21 +0800
-Subject: [PATCH 2/6] testing settings
+Subject: [PATCH 2/9] testing settings
 
 ---
  arch/arm/mach-cns3xxx/cns3420vb.c         |    4 +-
@@ -6153,7 +6153,7 @@ index 75c936e..a3082b9 100644
 From 78a854605eab9d3e166136613f27aeb14d1133a8 Mon Sep 17 00:00:00 2001
 From: YangKunlun <yangkunlun@gmail.com>
 Date: Tue, 27 Oct 2015 22:50:49 +0800
-Subject: [PATCH 3/6] networking working
+Subject: [PATCH 3/9] networking working
 
 Now use poll method, ksoftirq is using 100% cpu
 but can ping and ssh login!!!
@@ -8722,7 +8722,7 @@ index 0000000..51056f1
 From 86dbfaa40d3de4cbc42ad963812ffb3989d4f580 Mon Sep 17 00:00:00 2001
 From: YangKunlun <yangkunlun@gmail.com>
 Date: Tue, 27 Oct 2015 23:26:10 +0800
-Subject: [PATCH 4/6] network fixed! Now working fine!
+Subject: [PATCH 4/9] network fixed! Now working fine!
 
 ---
  drivers/net/ethernet/cavium/cns3xxx_eth.c | 16 ++++++----------
@@ -8771,7 +8771,7 @@ index e492b83..d3f5491 100644
 From 5a4292631b3eb3a654aa2068e2d9ed2c32e0800c Mon Sep 17 00:00:00 2001
 From: YangKunlun <yangkunlun@gmail.com>
 Date: Tue, 27 Oct 2015 23:34:44 +0800
-Subject: [PATCH 5/6] network still working fine!
+Subject: [PATCH 5/9] network still working fine!
 
 ---
  drivers/net/ethernet/cavium/cns3xxx_eth.c | 66 -------------------------------
@@ -8890,7 +8890,7 @@ index d3f5491..4b31d70 100644
 From bfe1ffc5c10ee5410dd54ce3b1fb3cf87f363f2f Mon Sep 17 00:00:00 2001
 From: YangKunlun <yangkunlun@gmail.com>
 Date: Tue, 27 Oct 2015 23:41:35 +0800
-Subject: [PATCH 6/6] still working fine :-)
+Subject: [PATCH 6/9] still working fine :-)
 
 ---
  drivers/net/ethernet/cavium/cns3xxx_eth.c | 2 --
@@ -8915,6 +8915,260 @@ index 4b31d70..86dd140 100644
 -    irq_set_irq_type(sw->rx_irq, IRQ_TYPE_EDGE_RISING);
  	return 0;
  }
+ 
+-- 
+2.1.4
+
+
+From 621d65a6f41d9bdbca4eaadc18c8eb1af2550756 Mon Sep 17 00:00:00 2001
+From: YangKunlun <yangkunlun@gmail.com>
+Date: Wed, 28 Oct 2015 22:25:42 +0800
+Subject: [PATCH 7/9] ethernet works booting from sata!
+
+but code is nasty, now start cleaning up!
+---
+ drivers/net/ethernet/cavium/cns3xxx_eth.c | 51 ++++++++++++++++++++++++-------
+ 1 file changed, 40 insertions(+), 11 deletions(-)
+
+diff --git a/drivers/net/ethernet/cavium/cns3xxx_eth.c b/drivers/net/ethernet/cavium/cns3xxx_eth.c
+index 86dd140..8a69cbf 100644
+--- a/drivers/net/ethernet/cavium/cns3xxx_eth.c
++++ b/drivers/net/ethernet/cavium/cns3xxx_eth.c
+@@ -209,31 +209,31 @@ struct switch_regs {
+ 	u32 phy_control;
+ 	u32 phy_auto_addr;
+ 	u32 mac_glob_cfg;
+-	u32 mac_cfg[4];
++	u32 mac_cfg[4];                 // 7
+ 	u32 mac_pri_ctrl[5], __res;
+ 	u32 etype[2];
+-	u32 udp_range[4];
++	u32 udp_range[4];               //19
+ 	u32 prio_etype_udp;
+-	u32 prio_ipdscp[8];
++	u32 prio_ipdscp[8];             //28
+ 	u32 tc_ctrl;
+ 	u32 rate_ctrl;
+ 	u32 fc_glob_thrs;
+-	u32 fc_port_thrs;
++	u32 fc_port_thrs;               //32
+ 	u32 mc_fc_glob_thrs;
+ 	u32 dc_glob_thrs;
+ 	u32 arl_vlan_cmd;
+-	u32 arl_ctrl[3];
++	u32 arl_ctrl[3];                //38
+ 	u32 vlan_cfg;
+ 	u32 pvid[2];
+ 	u32 vlan_ctrl[3];
+-	u32 session_id[8];
++	u32 session_id[8];              //52
+ 	u32 intr_stat;
+ 	u32 intr_mask;
+ 	u32 sram_test;
+-	u32 mem_queue;
++	u32 mem_queue;                  //56
+ 	u32 farl_ctrl;
+ 	u32 fc_input_thrs, __res1[2];
+-	u32 clk_skew_ctrl;
++	u32 clk_skew_ctrl;              //60
+ 	u32 mac_glob_cfg_ext, __res2[2];
+ 	u32 dma_ring_ctrl;
+ 	u32 dma_auto_poll_cfg;
+@@ -998,7 +998,7 @@ static int eth_open(struct net_device *dev)
+ {
+ 	struct port *port = netdev_priv(dev);
+ 	struct sw *sw = port->sw;
+-	u32 temp;
++	u32 temp, *xxx; int i;
+ 
+ 	port->speed = 0;	/* force "link up" message */
+ 	phy_start(port->phydev);
+@@ -1031,6 +1031,26 @@ static int eth_open(struct net_device *dev)
+ 	ports_open++;
+ 	netif_carrier_on(dev);
+ 
++    //////////////////////////////////
++    temp = 0x00000050;  //60th
++	__raw_writel(temp, &sw->regs->clk_skew_ctrl);
++    temp = 0xc0020180;  //2nd
++	__raw_writel(temp, &sw->regs->phy_auto_addr);
++    temp = 0x005bbe79;  //4th
++	__raw_writel(temp, &sw->regs->mac_cfg[0]);
++    temp = 0x0047be7a;  //5th
++	__raw_writel(temp, &sw->regs->mac_cfg[1]);
++    temp = 0x0047a516;  //7th
++	__raw_writel(temp, &sw->regs->mac_cfg[3]);
++
++    xxx = (u32*)sw->regs;
++    printk(KERN_INFO "eth_open\n");
++    for(i=0; i<offsetof(struct switch_regs, fs_desc_base_addr1)/4; i=i+8) {
++		printk(KERN_INFO "%04d: 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x\n",
++                i, xxx[i+0], xxx[i+1], xxx[i+2], xxx[i+3], 
++                xxx[i+4], xxx[i+5], xxx[i+6], xxx[i+7]);
++    }
++
+ 	return 0;
+ }
+ 
+@@ -1173,7 +1193,7 @@ static int eth_init_one(struct platform_device *pdev)
+ 	struct cns3xxx_plat_info *plat = pdev->dev.platform_data;
+ 	char phy_id[MII_BUS_ID_SIZE + 3];
+ 	int err;
+-	u32 temp;
++	u32 temp, *xxx;
+ 	struct resource *res;
+ 	void __iomem *regs;
+ 
+@@ -1200,6 +1220,14 @@ static int eth_init_one(struct platform_device *pdev)
+ 	sw->regs = regs;
+ 	sw->dev = &pdev->dev;
+ 
++    //////////////////////////////////
++    xxx = (u32*)regs;
++    for(i=0; i<offsetof(struct switch_regs, fs_desc_base_addr1)/4; i=i+8) {
++		printk(KERN_INFO "%04d: 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x\n",
++                i, xxx[i+0], xxx[i+1], xxx[i+2], xxx[i+3], 
++                xxx[i+4], xxx[i+5], xxx[i+6], xxx[i+7]);
++    }
++
+ 	sw->rx_irq = platform_get_irq_byname(pdev, "eth_rx");
+ 	sw->stat_irq = platform_get_irq_byname(pdev, "eth_stat");
+ 
+@@ -1209,7 +1237,8 @@ static int eth_init_one(struct platform_device *pdev)
+ 
+ 	for (i = 0; i < 4; i++) {
+ 		temp = __raw_readl(&sw->regs->mac_cfg[i]);
+-		temp |= (PORT_DISABLE);
++		temp |= (PORT_DISABLE );
++//      temp &= (~( 1<<11 | 1<<12));    //disable flow control
+ 		__raw_writel(temp, &sw->regs->mac_cfg[i]);
+ 	}
+ 
+-- 
+2.1.4
+
+
+From ed78fda0816a229925d7b6dcc5d69e85a932f9b6 Mon Sep 17 00:00:00 2001
+From: YangKunlun <yangkunlun@gmail.com>
+Date: Wed, 28 Oct 2015 22:43:01 +0800
+Subject: [PATCH 8/9] still works after some clean up!
+
+---
+ drivers/net/ethernet/cavium/cns3xxx_eth.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/net/ethernet/cavium/cns3xxx_eth.c b/drivers/net/ethernet/cavium/cns3xxx_eth.c
+index 8a69cbf..84c84b5 100644
+--- a/drivers/net/ethernet/cavium/cns3xxx_eth.c
++++ b/drivers/net/ethernet/cavium/cns3xxx_eth.c
+@@ -1032,16 +1032,13 @@ static int eth_open(struct net_device *dev)
+ 	netif_carrier_on(dev);
+ 
+     //////////////////////////////////
+-    temp = 0x00000050;  //60th
++    temp = 0x00000050;  //60th, only this one does not work!
+ 	__raw_writel(temp, &sw->regs->clk_skew_ctrl);
+     temp = 0xc0020180;  //2nd
+ 	__raw_writel(temp, &sw->regs->phy_auto_addr);
+     temp = 0x005bbe79;  //4th
+ 	__raw_writel(temp, &sw->regs->mac_cfg[0]);
+-    temp = 0x0047be7a;  //5th
+-	__raw_writel(temp, &sw->regs->mac_cfg[1]);
+-    temp = 0x0047a516;  //7th
+-	__raw_writel(temp, &sw->regs->mac_cfg[3]);
++    //with all three, works boot from sata
+ 
+     xxx = (u32*)sw->regs;
+     printk(KERN_INFO "eth_open\n");
+-- 
+2.1.4
+
+
+From 59627ee560013247998b4ff96efb9942484bd42f Mon Sep 17 00:00:00 2001
+From: YangKunlun <yangkunlun@gmail.com>
+Date: Thu, 29 Oct 2015 00:02:02 +0800
+Subject: [PATCH 9/9] ethernet works when boot from sata
+
+---
+ drivers/net/ethernet/cavium/cns3xxx_eth.c | 40 +++++++++++++++++++++++++------
+ 1 file changed, 33 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/net/ethernet/cavium/cns3xxx_eth.c b/drivers/net/ethernet/cavium/cns3xxx_eth.c
+index 84c84b5..bbe0981 100644
+--- a/drivers/net/ethernet/cavium/cns3xxx_eth.c
++++ b/drivers/net/ethernet/cavium/cns3xxx_eth.c
+@@ -95,6 +95,19 @@
+ #define MAC1_RX_ERROR 0x00200000
+ #define MAC2_RX_ERROR 0x00400000
+ 
++/* MAC Clock - Seagate Central u-boot */
++#define MAC0_CLOCK_ENABLE   (1<<7)
++#define MAC1_CLOCK_ENABLE   (1<<15)
++#define MAC2_CLOCK_ENABLE   (1<<23)
++
++#define GMII_CLOCK_SKEW     0x00000050
++#define MAC_SPEED_1000          2
++#define MAC_SPEED_100           1
++#define MAC_SPEED_10            0
++
++#define MAC_DUPLEX_FULL         1
++#define MAC_DUPLEX_HALF         0
++
+ struct tx_desc
+ {
+ 	u32 sdp; /* segment data pointer */
+@@ -1031,17 +1044,30 @@ static int eth_open(struct net_device *dev)
+ 	ports_open++;
+ 	netif_carrier_on(dev);
+ 
++    xxx = (u32*)sw->regs;
++    printk(KERN_INFO "eth_open switch register before fix:\n");
++    for(i=0; i<offsetof(struct switch_regs, fs_desc_base_addr1)/4; i=i+8) {
++		printk(KERN_INFO "%04d: 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x\n",
++                i, xxx[i+0], xxx[i+1], xxx[i+2], xxx[i+3], 
++                xxx[i+4], xxx[i+5], xxx[i+6], xxx[i+7]);
++    }
++
+     //////////////////////////////////
+-    temp = 0x00000050;  //60th, only this one does not work!
++    temp = GMII_CLOCK_SKEW;
+ 	__raw_writel(temp, &sw->regs->clk_skew_ctrl);
+-    temp = 0xc0020180;  //2nd
++
++    temp = __raw_readl(&sw->regs->phy_auto_addr);
++    temp |= MAC0_CLOCK_ENABLE;
+ 	__raw_writel(temp, &sw->regs->phy_auto_addr);
+-    temp = 0x005bbe79;  //4th
++
++    //when detected phy speed change, should change this value
++    //see u-boot cns3xxx_gsw.c - line 237, nasty hack for Seagate Central
++    temp = __raw_readl(&sw->regs->mac_cfg[0]);
++    temp &= 0xFFFFF000; //the last 12 bits miss configured
++    temp |= (0x005bbe79 & 0x00000FFF);
+ 	__raw_writel(temp, &sw->regs->mac_cfg[0]);
+-    //with all three, works boot from sata
+ 
+-    xxx = (u32*)sw->regs;
+-    printk(KERN_INFO "eth_open\n");
++    printk(KERN_INFO "eth_open switch register after fix:\n");
+     for(i=0; i<offsetof(struct switch_regs, fs_desc_base_addr1)/4; i=i+8) {
+ 		printk(KERN_INFO "%04d: 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x\n",
+                 i, xxx[i+0], xxx[i+1], xxx[i+2], xxx[i+3], 
+@@ -1219,6 +1245,7 @@ static int eth_init_one(struct platform_device *pdev)
+ 
+     //////////////////////////////////
+     xxx = (u32*)regs;
++    printk(KERN_INFO "eth_init_one switch register left by u-boot:\n");
+     for(i=0; i<offsetof(struct switch_regs, fs_desc_base_addr1)/4; i=i+8) {
+ 		printk(KERN_INFO "%04d: 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x\n",
+                 i, xxx[i+0], xxx[i+1], xxx[i+2], xxx[i+3], 
+@@ -1235,7 +1262,6 @@ static int eth_init_one(struct platform_device *pdev)
+ 	for (i = 0; i < 4; i++) {
+ 		temp = __raw_readl(&sw->regs->mac_cfg[i]);
+ 		temp |= (PORT_DISABLE );
+-//      temp &= (~( 1<<11 | 1<<12));    //disable flow control
+ 		__raw_writel(temp, &sw->regs->mac_cfg[i]);
+ 	}
  
 -- 
 2.1.4
