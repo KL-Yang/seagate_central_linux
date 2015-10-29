@@ -9,3 +9,6 @@ Not yet: smp, usb, rtc, mtd
 
 Note for the ethernet driver, cns3420 uses edge triger irq.
 http://www.linuxfoundation.org/collaborate/workgroups/networking/napi#non-level_sensitive_IRQs
+
+This is a Wip patch, in progress of cleaning up and try to upstream later.
+The files are copied from OpenWRT, and the patch applies on top of them.
