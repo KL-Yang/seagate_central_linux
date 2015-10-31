@@ -1,7 +1,7 @@
 From 35b5127b0fc0d595c552b8531a1f64fa0f132c06 Mon Sep 17 00:00:00 2001
 From: YangKunlun <yangkunlun@gmail.com>
 Date: Fri, 30 Oct 2015 07:49:17 +0800
-Subject: [PATCH] Fixed the ethernet driver
+Subject: [PATCH 1/2] Fixed the ethernet driver
 
 ---
  arch/arm/mach-cns3xxx/cns3420vb.c                 |  40 ++++++
@@ -379,6 +379,74 @@ index e2db636..89ba649 100644
  			goto free_ports;
 +            //TODO: here we should initiate whatever ports we can
 +            //only skip those failed, instead of failall!!!
+ 		}
+ 
+ 		port = netdev_priv(dev);
+-- 
+2.1.4
+
+
+From 90e654f124f3bcb22cb34fb3fd14c9c31286b1b5 Mon Sep 17 00:00:00 2001
+From: YangKunlun <yangkunlun@gmail.com>
+Date: Fri, 30 Oct 2015 21:22:12 +0800
+Subject: [PATCH 2/2] some cleanup
+
+---
+ drivers/net/ethernet/cavium/cns3xxx/cns3xxx_eth.c | 22 +++-------------------
+ 1 file changed, 3 insertions(+), 19 deletions(-)
+
+diff --git a/drivers/net/ethernet/cavium/cns3xxx/cns3xxx_eth.c b/drivers/net/ethernet/cavium/cns3xxx/cns3xxx_eth.c
+index 89ba649..bee0675 100644
+--- a/drivers/net/ethernet/cavium/cns3xxx/cns3xxx_eth.c
++++ b/drivers/net/ethernet/cavium/cns3xxx/cns3xxx_eth.c
+@@ -1010,9 +1010,8 @@ static int eth_open(struct net_device *dev)
+ 	ports_open++;
+ 	netif_carrier_on(dev);
+ 
+-    cns3xxx_print_switch_reg("eth_open switch register before fix", (u32*)sw->regs);
++    cns3xxx_print_switch_reg("eth_open register before fix", (u32*)sw->regs);
+ 
+-    //////////////////////////////////
+     temp = GMII_CLOCK_SKEW;
+ 	__raw_writel(temp, &sw->regs->clk_skew_ctrl);
+ 
+@@ -1020,20 +1019,7 @@ static int eth_open(struct net_device *dev)
+     temp |= MAC0_CLOCK_ENABLE;
+ 	__raw_writel(temp, &sw->regs->phy_auto_addr);
+ 
+-    //when detected phy speed change, should change this value
+-    //see u-boot cns3xxx_gsw.c - line 237, nasty hack for Seagate Central
+-    // <<11 two bit for flow control
+-    // <<10 is duplex or half
+-    // <<8  two bit for speed
+-    // 0-7 is unknown!
+-    //temp = __raw_readl(&sw->regs->mac_cfg[0]);
+-    //temp &= 0xFFFFF000; //the last 12 bits miss configured
+-    //temp |= (0x005bbe79 & 0x00000FFF);
+-    //temp &= 0xFFFFFF00; //the last 8 bits mis-configured, we don't know yet!
+-    //temp |= (0x005bbe79 & 0x000000FF);  //this still work!
+-	//__raw_writel(temp, &sw->regs->mac_cfg[0]);
+-
+-    cns3xxx_print_switch_reg("eth_open switch register after fix", (u32*)sw->regs);
++    cns3xxx_print_switch_reg("eth_open register after fix", (u32*)sw->regs);
+ 
+ 	return 0;
+ }
+@@ -1202,7 +1188,7 @@ static int eth_init_one(struct platform_device *pdev)
+ 	sw->regs = regs;
+ 	sw->dev = &pdev->dev;
+ 
+-    cns3xxx_print_switch_reg("eth_init_one switch register left by u-boot:", (u32*)regs);
++    cns3xxx_print_switch_reg("eth_init_one register left by u-boot:", (u32*)regs);
+ 
+ 	sw->rx_irq = platform_get_irq_byname(pdev, "eth_rx");
+ 
+@@ -1242,8 +1228,6 @@ static int eth_init_one(struct platform_device *pdev)
+ 
+ 		if (!(dev = alloc_etherdev(sizeof(struct port)))) {
+ 			goto free_ports;
+-            //TODO: here we should initiate whatever ports we can
+-            //only skip those failed, instead of failall!!!
  		}
  
  		port = netdev_priv(dev);
