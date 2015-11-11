@@ -1,11 +1,16 @@
 # seagate_centeral_linux
 
 The following two files are patch for OpenWRT 15.05's cns3xxx
+
 1. 901_seagate_central_ethernet_smp.patch
+
 2. config_seagate_smp
+
 Both ethernet and SMP are working fine, can boot into debian Jessie and compile the kernel itself locally with -j2
 
-The rest files are mainline linux patch for Seagate Central NAS 4.x (linux-4.2.y)
+
+
+The rest files are mainline linux patch for Seagate Central NAS 4.x (linux-4.2.y), to be cleanup into another branch.
 
 see: http://forum.doozan.com/read.php?2,22114
 the config_seagate_good0 after apply patch is a basic configuration for Debian Jessie.
