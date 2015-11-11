@@ -1,12 +1,14 @@
-# seagate_centeral_linux
+# Seagate_central_linux
 
-The following two files are patch for OpenWRT 15.05's cns3xxx
+The following two files are patch for OpenWRT 15.05's cns3xxx kernel
 
 1. 901_seagate_central_ethernet_smp.patch
 
 2. config_seagate_smp
 
-Both ethernet and SMP are working fine, can boot into debian Jessie and compile the kernel itself locally with -j2
+Usage:
+
+Clone linux-3.18.y stable branch, apply OpenWRT 15.05's cns3xxx target kernel patch, then apply this patch. Cross-compile the kernel on a Debian PC and the kernel should boot on Seagate Central NAS with Debian Jessie armel rootfs. SATA, Ethernet and SMP are working fine in my test and I can compile the kernel itself on Seagate Central with -j2 to validate the stability of kernel. USB and RTC is not working yet. All the thanks goes to OpenWRT.
 
 
 
