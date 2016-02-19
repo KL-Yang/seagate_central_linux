@@ -7,13 +7,12 @@ The following two files are patch for OpenWRT 15.05's cns3xxx kernel
 
 Usage:
 
-Clone linux-3.18.y stable branch, apply OpenWRT 15.05's cns3xxx target kernel patch, then apply this patch. 
+Clone linux-3.18.y stable branch, apply OpenWRT 15.05's cns3xxx target kernel patch (a snapshot copy is in this project), then apply this patch. 
 Cross-compile the kernel on a Debian PC and the kernel should boot on Seagate Central NAS with Debian Jessie armel rootfs. 
 SATA, Ethernet and SMP are working fine in my test and I can compile the kernel itself on Seagate Central with -j2 to validate the stability of kernel. 
 USB and RTC is not working yet. All the thanks goes to OpenWRT.
 
-see: http://forum.doozan.com/read.php?2,22114
-the config_seagate_good0 after apply patch is a basic configuration for Debian Jessie.
+See: http://forum.doozan.com/read.php?2,22114
 
 A Debian Jessie rootfs (debootstrap armel) and kernel 3.18.27 can be found here
 https://drive.google.com/file/d/0B-PZDFHXqH6pWmRJQ0k3enUzNzg/view?usp=sharing
