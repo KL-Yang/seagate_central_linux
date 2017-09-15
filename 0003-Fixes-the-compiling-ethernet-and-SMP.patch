@@ -1,17 +1,17 @@
-From 4b64e9c6caff5fd0413c33af1e9a5d712043a4d0 Mon Sep 17 00:00:00 2001
-From: YangKunlun <yangkunlun@gmail.com>
-Date: Tue, 3 Nov 2015 22:08:23 +0800
-Subject: [PATCH] Fixes the compiling, ethernet and SMP
+From 5d8e90d0f773da328307e496b25269e64fa88e2d Mon Sep 17 00:00:00 2001
+From: yangkunlun <yangkunlun@gmail.com>
+Date: Thu, 14 Sep 2017 12:08:53 +0000
+Subject: [PATCH] works OK now
 
 ---
  arch/arm/mach-cns3xxx/cns3420vb.c         | 59 ++++++++++++++++++++++---------
  arch/arm/mach-cns3xxx/devices.c           |  8 ++---
  arch/arm/mach-cns3xxx/hotplug.c           |  1 +
- drivers/net/ethernet/cavium/cns3xxx_eth.c | 53 ++++++++++++++++++++++++++-
- 4 files changed, 99 insertions(+), 22 deletions(-)
+ drivers/net/ethernet/cavium/cns3xxx_eth.c | 39 ++++++++++++++++++++
+ 4 files changed, 86 insertions(+), 21 deletions(-)
 
 diff --git a/arch/arm/mach-cns3xxx/cns3420vb.c b/arch/arm/mach-cns3xxx/cns3420vb.c
-index c457c6141..1d49d06d6 100644
+index c457c614..1d49d06d 100644
 --- a/arch/arm/mach-cns3xxx/cns3420vb.c
 +++ b/arch/arm/mach-cns3xxx/cns3420vb.c
 @@ -26,11 +26,13 @@
@@ -113,7 +113,7 @@ index c457c6141..1d49d06d6 100644
  	.map_io		= cns3420_map_io,
  	.init_irq	= cns3xxx_init_irq,
 diff --git a/arch/arm/mach-cns3xxx/devices.c b/arch/arm/mach-cns3xxx/devices.c
-index 0caed0529..0164d21d3 100644
+index 0caed052..0164d21d 100644
 --- a/arch/arm/mach-cns3xxx/devices.c
 +++ b/arch/arm/mach-cns3xxx/devices.c
 @@ -102,11 +102,11 @@ void __init cns3xxx_sdhci_init(void)
@@ -133,7 +133,7 @@ index 0caed0529..0164d21d3 100644
  
  	cns3xxx_pwr_clk_en(CNS3XXX_PWR_CLK_EN(SDIO));
 diff --git a/arch/arm/mach-cns3xxx/hotplug.c b/arch/arm/mach-cns3xxx/hotplug.c
-index be0d499a3..149afde9c 100644
+index be0d499a..149afde9 100644
 --- a/arch/arm/mach-cns3xxx/hotplug.c
 +++ b/arch/arm/mach-cns3xxx/hotplug.c
 @@ -15,6 +15,7 @@
@@ -145,18 +145,10 @@ index be0d499a3..149afde9c 100644
  extern volatile int pen_release;
  
 diff --git a/drivers/net/ethernet/cavium/cns3xxx_eth.c b/drivers/net/ethernet/cavium/cns3xxx_eth.c
-index e2db63687..c098258d3 100644
+index 51b01876..6d770a75 100644
 --- a/drivers/net/ethernet/cavium/cns3xxx_eth.c
 +++ b/drivers/net/ethernet/cavium/cns3xxx_eth.c
-@@ -56,7 +56,6 @@
- #define FIRST_SEGMENT 0x20000000
- #define LAST_SEGMENT 0x10000000
- #define FORCE_ROUTE 0x04000000
--#define IP_CHECKSUM 0x00040000
- #define UDP_CHECKSUM 0x00020000
- #define TCP_CHECKSUM 0x00010000
- 
-@@ -96,6 +95,19 @@
+@@ -95,6 +95,19 @@
  #define MAC1_RX_ERROR 0x00200000
  #define MAC2_RX_ERROR 0x00400000
  
@@ -176,7 +168,7 @@ index e2db63687..c098258d3 100644
  struct tx_desc
  {
  	u32 sdp; /* segment data pointer */
-@@ -418,6 +430,8 @@ static void cns3xxx_adjust_link(struct net_device *dev)
+@@ -415,6 +428,8 @@ static void cns3xxx_adjust_link(struct net_device *dev)
  {
  	struct port *port = netdev_priv(dev);
  	struct phy_device *phydev = port->phydev;
@@ -185,7 +177,7 @@ index e2db63687..c098258d3 100644
  
  	if (!phydev->link) {
  		if (port->speed) {
-@@ -433,6 +447,19 @@ static void cns3xxx_adjust_link(struct net_device *dev)
+@@ -430,6 +445,19 @@ static void cns3xxx_adjust_link(struct net_device *dev)
  	port->speed = phydev->speed;
  	port->duplex = phydev->duplex;
  
@@ -205,25 +197,7 @@ index e2db63687..c098258d3 100644
  	printk(KERN_INFO "%s: link up, speed %u Mb/s, %s duplex\n",
  	       dev->name, port->speed, port->duplex ? "full" : "half");
  }
-@@ -997,6 +1024,17 @@ static void destroy_rings(struct sw *sw)
- 	}
- }
- 
-+static void cns3xxx_print_switch_reg(const char *msg, u32 *xxx)
-+{
-+    int i;
-+    printk(KERN_INFO "%s:\n", msg);
-+    for(i=0; i<offsetof(struct switch_regs, fs_desc_base_addr1)/4; i=i+8) {
-+		printk(KERN_INFO "%04d: 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x\n",
-+                i, xxx[i+0], xxx[i+1], xxx[i+2], xxx[i+3], 
-+                xxx[i+4], xxx[i+5], xxx[i+6], xxx[i+7]);
-+    }
-+}
-+
- static int eth_open(struct net_device *dev)
- {
- 	struct port *port = netdev_priv(dev);
-@@ -1034,6 +1072,17 @@ static int eth_open(struct net_device *dev)
+@@ -1017,6 +1045,17 @@ static int eth_open(struct net_device *dev)
  	ports_open++;
  	netif_carrier_on(dev);
  
@@ -240,15 +214,6 @@ index e2db63687..c098258d3 100644
 +
  	return 0;
  }
- 
-@@ -1203,6 +1252,8 @@ static int eth_init_one(struct platform_device *pdev)
- 	sw->regs = regs;
- 	sw->dev = &pdev->dev;
- 
-+    //cns3xxx_print_switch_reg("eth_init_one register left by u-boot:", (u32*)regs);
-+
- 	sw->rx_irq = platform_get_irq_byname(pdev, "eth_rx");
- 	sw->stat_irq = platform_get_irq_byname(pdev, "eth_stat");
  
 -- 
 2.11.0

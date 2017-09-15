@@ -1,6 +1,6 @@
 # Seagate_central_linux
 
-For linux-3.18.y kernel, use kernel-3.18 branch.
+For linux-3.18.y kernel, use kernel-3.18 branch, master branch update to linux-4.4.y kernel.
 
 The 0001 and 0002 patches are merged OpenWRT 15.05's patch of cns3xxx kernel, they are merged for convinence.
 Patch 0003 fixed the ethernet setup problem that specific to Seagate Central. config_seagate_smp is a working

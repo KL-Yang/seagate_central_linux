@@ -1,38 +1,39 @@
-From ffa44cb6a0aa7b2488703b232966cbf258abf738 Mon Sep 17 00:00:00 2001
-From: YangKunlun <yangkunlun@gmail.com>
-Date: Sun, 1 Nov 2015 10:17:43 +0800
-Subject: [PATCH 2/2] All openwrt 15.05 applied!
+From 2fb94d9218a3c525ab4df9a79114745628fe9c13 Mon Sep 17 00:00:00 2001
+From: yangkunlun <yangkunlun@gmail.com>
+Date: Fri, 14 Jul 2017 13:57:39 +0000
+Subject: [PATCH 2/2] apply openwrt patches
 
 ---
  arch/arm/configs/cns3420vb_defconfig |   2 +
- arch/arm/include/asm/glue-cache.h    |   8 +++
- arch/arm/mach-cns3xxx/Kconfig        |  14 ++++
+ arch/arm/include/asm/glue-cache.h    |  10 ++-
+ arch/arm/mach-cns3xxx/Kconfig        |  14 +++++
  arch/arm/mach-cns3xxx/Makefile       |   8 ++-
- arch/arm/mach-cns3xxx/cns3420vb.c    |  28 +++++++-
+ arch/arm/mach-cns3xxx/cns3420vb.c    |  28 ++++++++-
  arch/arm/mach-cns3xxx/cns3xxx.h      |   3 +
- arch/arm/mach-cns3xxx/core.c         | 116 +++++++++++++++++++++++++-------
+ arch/arm/mach-cns3xxx/core.c         | 109 +++++++++++++++++++++++++-------
  arch/arm/mach-cns3xxx/core.h         |   9 +--
- arch/arm/mach-cns3xxx/devices.c      |   7 +-
- arch/arm/mach-cns3xxx/laguna.c       |  70 ++++++++++++++++++--
- arch/arm/mach-cns3xxx/pcie.c         | 124 +++++++++++++++++++++++++++++++++--
+ arch/arm/mach-cns3xxx/devices.c      |   7 ++-
+ arch/arm/mach-cns3xxx/laguna.c       |  70 +++++++++++++++++++--
+ arch/arm/mach-cns3xxx/pcie.c         | 117 +++++++++++++++++++++++++++++++++--
  arch/arm/mm/Kconfig                  |  13 +++-
+ arch/arm/mm/dma.h                    |   9 ++-
  arch/arm/mm/flush.c                  |   6 +-
  drivers/ata/ahci_platform.c          |  11 ++++
  drivers/i2c/busses/Kconfig           |  12 ++++
  drivers/i2c/busses/Makefile          |   1 +
  drivers/mmc/host/sdhci-cns3xxx.c     |   4 +-
- drivers/net/ethernet/Kconfig         |   1 +
- drivers/net/ethernet/Makefile        |   1 +
  drivers/net/phy/broadcom.c           |   5 ++
- drivers/spi/Kconfig                  |   7 ++
+ drivers/pci/probe.c                  |   3 +-
+ drivers/spi/Kconfig                  |   7 +++
  drivers/spi/Makefile                 |   1 +
- drivers/spi/spi-bitbang.c            |   4 ++
- drivers/usb/dwc2/platform.c          |  31 +++++++++
- include/linux/spi/spi.h              |   7 ++
- 25 files changed, 442 insertions(+), 51 deletions(-)
+ drivers/spi/spi.c                    |   3 +
+ drivers/usb/dwc2/platform.c          |  31 ++++++++++
+ include/linux/pci.h                  |   2 +-
+ include/linux/spi/spi.h              |   4 ++
+ 26 files changed, 433 insertions(+), 56 deletions(-)
 
 diff --git a/arch/arm/configs/cns3420vb_defconfig b/arch/arm/configs/cns3420vb_defconfig
-index b1ff5cdba..1e22611cb 100644
+index b1ff5cdb..1e22611c 100644
 --- a/arch/arm/configs/cns3420vb_defconfig
 +++ b/arch/arm/configs/cns3420vb_defconfig
 @@ -56,6 +56,8 @@ CONFIG_LEGACY_PTY_COUNT=16
@@ -45,31 +46,29 @@ index b1ff5cdba..1e22611cb 100644
  # CONFIG_USB_SUPPORT is not set
  CONFIG_MMC=y
 diff --git a/arch/arm/include/asm/glue-cache.h b/arch/arm/include/asm/glue-cache.h
-index a3c24cd5b..f39af91c8 100644
+index cab07f69..b095bb63 100644
 --- a/arch/arm/include/asm/glue-cache.h
 +++ b/arch/arm/include/asm/glue-cache.h
-@@ -156,11 +156,19 @@ static inline void nop_dma_unmap_area(const void *s, size_t l, int f) { }
+@@ -156,9 +156,15 @@ static inline void nop_dma_unmap_area(const void *s, size_t l, int f) { }
  #define __cpuc_flush_user_range		__glue(_CACHE,_flush_user_cache_range)
  #define __cpuc_coherent_kern_range	__glue(_CACHE,_coherent_kern_range)
  #define __cpuc_coherent_user_range	__glue(_CACHE,_coherent_user_range)
-+#ifndef CONFIG_DMA_CACHE_FIQ_BROADCAST
- #define __cpuc_flush_dcache_area	__glue(_CACHE,_flush_kern_dcache_area)
+-#define __cpuc_flush_dcache_area	__glue(_CACHE,_flush_kern_dcache_area)
  
- #define dmac_map_area			__glue(_CACHE,_dma_map_area)
- #define dmac_unmap_area			__glue(_CACHE,_dma_unmap_area)
- #define dmac_flush_range		__glue(_CACHE,_dma_flush_range)
+-#define dmac_flush_range		__glue(_CACHE,_dma_flush_range)
++#ifndef CONFIG_DMA_CACHE_FIQ_BROADCAST
++# define __cpuc_flush_dcache_area	__glue(_CACHE,_flush_kern_dcache_area)
++# define dmac_flush_range		__glue(_CACHE,_dma_flush_range)
 +#else
-+#define __cpuc_flush_dcache_area	__glue(fiq,_flush_kern_dcache_area)
++# define __cpuc_flush_dcache_area	__glue(fiq,_flush_kern_dcache_area)
++# define dmac_flush_range		__glue(fiq,_dma_flush_range)
++#endif
 +
-+#define dmac_map_area			__glue(fiq,_dma_map_area)
-+#define dmac_unmap_area			__glue(fiq,_dma_unmap_area)
-+#define dmac_flush_range		__glue(fiq,_dma_flush_range)
-+#endif /* CONFIG_DMA_CACHE_FIQ_BROADCAST */
  #endif
  
  #endif
 diff --git a/arch/arm/mach-cns3xxx/Kconfig b/arch/arm/mach-cns3xxx/Kconfig
-index 3c22a1990..447bc45b8 100644
+index 3c22a199..ff01c7de 100644
 --- a/arch/arm/mach-cns3xxx/Kconfig
 +++ b/arch/arm/mach-cns3xxx/Kconfig
 @@ -1,7 +1,13 @@
@@ -80,7 +79,7 @@ index 3c22a1990..447bc45b8 100644
 +	select GENERIC_IRQ_CHIP
  	select PCI_DOMAINS if PCI
 +	select HAVE_ARM_SCU if SMP
-+	select HAVE_ARM_TWD if LOCAL_TIMERS
++	select HAVE_ARM_TWD
 +	select HAVE_SMP
 +	select FIQ
  	help
@@ -100,10 +99,10 @@ index 3c22a1990..447bc45b8 100644
 +
  endif
 diff --git a/arch/arm/mach-cns3xxx/Makefile b/arch/arm/mach-cns3xxx/Makefile
-index fd6105616..386878573 100644
+index a1ff1084..7265295c 100644
 --- a/arch/arm/mach-cns3xxx/Makefile
 +++ b/arch/arm/mach-cns3xxx/Makefile
-@@ -1,6 +1,12 @@
+@@ -1,5 +1,11 @@
 +ccflags-$(CONFIG_ARCH_MULTIPLATFORM) := -I$(srctree)/$(src)/include
 +
  obj-$(CONFIG_ARCH_CNS3XXX)		+= cns3xxx.o
@@ -111,14 +110,13 @@ index fd6105616..386878573 100644
 +cns3xxx-y				+= core.o pm.o gpio.o
  cns3xxx-$(CONFIG_ATAGS)			+= devices.o
  cns3xxx-$(CONFIG_PCI)			+= pcie.o
- CFLAGS_pcie.o				+= -Wframe-larger-than=1536 # override default 1024, this is safe here
  cns3xxx-$(CONFIG_MACH_CNS3420VB)	+= cns3420vb.o
 +cns3xxx-$(CONFIG_SMP)			+= platsmp.o headsmp.o cns3xxx_fiq.o
 +cns3xxx-$(CONFIG_HOTPLUG_CPU)		+= hotplug.o
 +cns3xxx-$(CONFIG_MACH_GW2388)		+= laguna.o
 +
 diff --git a/arch/arm/mach-cns3xxx/cns3420vb.c b/arch/arm/mach-cns3xxx/cns3420vb.c
-index 6428bcc77..c457c6141 100644
+index 6428bcc7..c457c614 100644
 --- a/arch/arm/mach-cns3xxx/cns3420vb.c
 +++ b/arch/arm/mach-cns3xxx/cns3420vb.c
 @@ -206,10 +206,32 @@ static struct platform_device cns3xxx_usb_ohci_device = {
@@ -172,7 +170,7 @@ index 6428bcc77..c457c6141 100644
  	pm_power_off = cns3xxx_power_off;
  }
 diff --git a/arch/arm/mach-cns3xxx/cns3xxx.h b/arch/arm/mach-cns3xxx/cns3xxx.h
-index a0f5b6066..69801e2f7 100644
+index a0f5b606..69801e2f 100644
 --- a/arch/arm/mach-cns3xxx/cns3xxx.h
 +++ b/arch/arm/mach-cns3xxx/cns3xxx.h
 @@ -68,8 +68,10 @@
@@ -195,7 +193,7 @@ index a0f5b6066..69801e2f7 100644
   * Power management and clock control
   */
 diff --git a/arch/arm/mach-cns3xxx/core.c b/arch/arm/mach-cns3xxx/core.c
-index 4e9837ded..baca30931 100644
+index 9b1dc223..4e5ce6cd 100644
 --- a/arch/arm/mach-cns3xxx/core.c
 +++ b/arch/arm/mach-cns3xxx/core.c
 @@ -17,6 +17,7 @@
@@ -249,43 +247,43 @@ index 4e9837ded..baca30931 100644
  #endif
  	},
  };
-@@ -122,12 +145,13 @@ static void cns3xxx_timer_set_mode(enum clock_event_mode mode,
+@@ -125,6 +148,7 @@ static int cns3xxx_set_oneshot(struct clock_event_device *clk)
  
- 	switch (mode) {
- 	case CLOCK_EVT_MODE_PERIODIC:
--		reload = pclk * 20 / (3 * HZ) * 0x25000;
-+		reload = pclk * 1000000 / HZ;
- 		writel(reload, cns3xxx_tmr1 + TIMER1_AUTO_RELOAD_OFFSET);
- 		ctrl |= (1 << 0) | (1 << 2) | (1 << 9);
- 		break;
- 	case CLOCK_EVT_MODE_ONESHOT:
- 		/* period set, and timer enabled in 'next_event' hook */
-+		writel(0, cns3xxx_tmr1 + TIMER1_AUTO_RELOAD_OFFSET);
- 		ctrl |= (1 << 2) | (1 << 9);
- 		break;
- 	case CLOCK_EVT_MODE_UNUSED:
-@@ -155,7 +179,7 @@ static struct clock_event_device cns3xxx_tmr1_clockevent = {
- 	.features       = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT,
- 	.set_mode	= cns3xxx_timer_set_mode,
- 	.set_next_event	= cns3xxx_timer_set_next_event,
--	.rating		= 350,
-+	.rating		= 300,
- 	.cpumask	= cpu_all_mask,
+ 	/* period set, and timer enabled in 'next_event' hook */
+ 	ctrl |= (1 << 2) | (1 << 9);
++	writel(0, cns3xxx_tmr1 + TIMER1_AUTO_RELOAD_OFFSET);
+ 	writel(ctrl, cns3xxx_tmr1 + TIMER1_2_CONTROL_OFFSET);
+ 	return 0;
+ }
+@@ -135,7 +159,7 @@ static int cns3xxx_set_periodic(struct clock_event_device *clk)
+ 	int pclk = cns3xxx_cpu_clock() / 8;
+ 	int reload;
+ 
+-	reload = pclk * 20 / (3 * HZ) * 0x25000;
++	reload = pclk * 1000000 / HZ;
+ 	writel(reload, cns3xxx_tmr1 + TIMER1_AUTO_RELOAD_OFFSET);
+ 	ctrl |= (1 << 0) | (1 << 2) | (1 << 9);
+ 	writel(ctrl, cns3xxx_tmr1 + TIMER1_2_CONTROL_OFFSET);
+@@ -162,7 +186,7 @@ static struct clock_event_device cns3xxx_tmr1_clockevent = {
+ 	.set_state_oneshot	= cns3xxx_set_oneshot,
+ 	.tick_resume		= cns3xxx_shutdown,
+ 	.set_next_event		= cns3xxx_timer_set_next_event,
+-	.rating			= 350,
++	.rating			= 300,
+ 	.cpumask		= cpu_all_mask,
  };
  
-@@ -191,6 +215,46 @@ static struct irqaction cns3xxx_timer_irq = {
+@@ -198,6 +222,41 @@ static struct irqaction cns3xxx_timer_irq = {
  	.handler	= cns3xxx_timer_interrupt,
  };
  
 +static void __init cns3xxx_init_twd(void)
 +{
-+#ifdef CONFIG_LOCAL_TIMERS
 +	static DEFINE_TWD_LOCAL_TIMER(cns3xx_twd_local_timer,
 +		CNS3XXX_TC11MP_TWD_BASE,
 +		IRQ_LOCALTIMER);
 +
 +	twd_local_timer_register(&cns3xx_twd_local_timer);
-+#endif
 +}
 +
 +static cycle_t cns3xxx_get_cycles(struct clocksource *cs)
@@ -303,7 +301,6 @@ index 4e9837ded..baca30931 100644
 +	.rating = 200,
 +	.read = cns3xxx_get_cycles,
 +	.mask = CLOCKSOURCE_MASK(48),
-+	.shift  = 16,
 +	.flags  = CLOCK_SOURCE_IS_CONTINUOUS,
 +};
 +
@@ -312,15 +309,13 @@ index 4e9837ded..baca30931 100644
 +	/* Reset the FreeRunning counter */
 +	writel((1 << 16), cns3xxx_tmr1 + TIMER_FREERUN_CONTROL_OFFSET);
 +
-+	clocksource_cns3xxx.mult =
-+		clocksource_khz2mult(100, clocksource_cns3xxx.shift);
-+	clocksource_register(&clocksource_cns3xxx);
++	clocksource_register_khz(&clocksource_cns3xxx, 100);
 +}
 +
  /*
   * Set up the clock source and clock events devices
   */
-@@ -208,13 +272,12 @@ static void __init __cns3xxx_timer_init(unsigned int timer_irq)
+@@ -215,13 +274,12 @@ static void __init __cns3xxx_timer_init(unsigned int timer_irq)
  	/* stop free running timer3 */
  	writel(0, cns3xxx_tmr1 + TIMER_FREERUN_CONTROL_OFFSET);
  
@@ -337,7 +332,7 @@ index 4e9837ded..baca30931 100644
  	/* mask irq, non-mask timer1 overflow */
  	irq_mask = readl(cns3xxx_tmr1 + TIMER1_2_INTERRUPT_MASK_OFFSET);
  	irq_mask &= ~(1 << 2);
-@@ -226,24 +289,11 @@ static void __init __cns3xxx_timer_init(unsigned int timer_irq)
+@@ -233,24 +291,11 @@ static void __init __cns3xxx_timer_init(unsigned int timer_irq)
  	val |= (1 << 9);
  	writel(val, cns3xxx_tmr1 + TIMER1_2_CONTROL_OFFSET);
  
@@ -364,7 +359,7 @@ index 4e9837ded..baca30931 100644
  }
  
  void __init cns3xxx_timer_init(void)
-@@ -255,13 +305,26 @@ void __init cns3xxx_timer_init(void)
+@@ -262,13 +307,26 @@ void __init cns3xxx_timer_init(void)
  
  #ifdef CONFIG_CACHE_L2X0
  
@@ -394,7 +389,7 @@ index 4e9837ded..baca30931 100644
  
  	/*
  	 * Tag RAM Control register
-@@ -291,7 +354,10 @@ void __init cns3xxx_l2x0_init(void)
+@@ -298,7 +356,10 @@ void __init cns3xxx_l2x0_init(void)
  
  	/* 32 KiB, 8-way, parity disable */
  	l2x0_init(base, 0x00500000, 0xfe0f0fff);
@@ -405,17 +400,8 @@ index 4e9837ded..baca30931 100644
  
  #endif /* CONFIG_CACHE_L2X0 */
  
-@@ -339,7 +405,7 @@ static struct usb_ohci_pdata cns3xxx_usb_ohci_pdata = {
- 	.power_off	= csn3xxx_usb_power_off,
- };
- 
--static struct of_dev_auxdata cns3xxx_auxdata[] __initconst = {
-+static const struct of_dev_auxdata cns3xxx_auxdata[] __initconst = {
- 	{ "intel,usb-ehci", CNS3XXX_USB_BASE, "ehci-platform", &cns3xxx_usb_ehci_pdata },
- 	{ "intel,usb-ohci", CNS3XXX_USB_OHCI_BASE, "ohci-platform", &cns3xxx_usb_ohci_pdata },
- 	{ "cavium,cns3420-ahci", CNS3XXX_SATA2_BASE, "ahci", NULL },
 diff --git a/arch/arm/mach-cns3xxx/core.h b/arch/arm/mach-cns3xxx/core.h
-index dc5df7f1e..27aaae079 100644
+index dc5df7f1..27aaae07 100644
 --- a/arch/arm/mach-cns3xxx/core.h
 +++ b/arch/arm/mach-cns3xxx/core.h
 @@ -13,18 +13,15 @@
@@ -441,7 +427,7 @@ index dc5df7f1e..27aaae079 100644
  
  void __init cns3xxx_map_io(void);
 diff --git a/arch/arm/mach-cns3xxx/devices.c b/arch/arm/mach-cns3xxx/devices.c
-index 7da78a245..0caed0529 100644
+index 7da78a24..0caed052 100644
 --- a/arch/arm/mach-cns3xxx/devices.c
 +++ b/arch/arm/mach-cns3xxx/devices.c
 @@ -16,6 +16,7 @@
@@ -466,7 +452,7 @@ index 7da78a245..0caed0529 100644
  
  	cns3xxx_pwr_clk_en(CNS3XXX_PWR_CLK_EN(SDIO));
 diff --git a/arch/arm/mach-cns3xxx/laguna.c b/arch/arm/mach-cns3xxx/laguna.c
-index 99c4108b2..5379248b5 100644
+index 6c779233..b6126a05 100644
 --- a/arch/arm/mach-cns3xxx/laguna.c
 +++ b/arch/arm/mach-cns3xxx/laguna.c
 @@ -21,6 +21,7 @@
@@ -571,7 +557,7 @@ index 99c4108b2..5379248b5 100644
  
  	if (strncmp(laguna_info.model, "GW", 2) == 0) {
  		if (laguna_info.config_bitmap & ETH0_LOAD)
-@@ -1075,5 +1132,6 @@ MACHINE_START(GW2388, "Gateworks Corporation Laguna Platform")
+@@ -1077,5 +1134,6 @@ MACHINE_START(GW2388, "Gateworks Corporation Laguna Platform")
  	.init_irq	= cns3xxx_init_irq,
  	.init_time	= cns3xxx_timer_init,
  	.init_machine	= laguna_init,
@@ -579,7 +565,7 @@ index 99c4108b2..5379248b5 100644
  	.restart	= cns3xxx_restart,
  MACHINE_END
 diff --git a/arch/arm/mach-cns3xxx/pcie.c b/arch/arm/mach-cns3xxx/pcie.c
-index 45d6bd09e..57b2baa91 100644
+index 318394ed..2d29fd94 100644
 --- a/arch/arm/mach-cns3xxx/pcie.c
 +++ b/arch/arm/mach-cns3xxx/pcie.c
 @@ -18,6 +18,7 @@
@@ -598,8 +584,8 @@ index 45d6bd09e..57b2baa91 100644
 +	unsigned int irqs[5];
  	struct resource res_io;
  	struct resource res_mem;
- 	struct hw_pci hw_pci;
-@@ -88,6 +89,79 @@ static void __iomem *cns3xxx_pci_cfg_base(struct pci_bus *bus,
+ 	int port;
+@@ -86,6 +87,79 @@ static void __iomem *cns3xxx_pci_map_bus(struct pci_bus *bus,
  	return base + (where & 0xffc) + (devfn << 12);
  }
  
@@ -662,7 +648,7 @@ index 45d6bd09e..57b2baa91 100644
 +			printk("\n");
 +*/
 +			pr_debug("%s failed port%d sreg=0x%04x\n", __func__,
-+				cnspci->hw_pci.domain, sreg);
++				pci_domain_nr(bus), sreg);
 +
 +			/* make sure the status bits are reset */
 +			__raw_writew(sreg, host_base + 6);
@@ -679,39 +665,19 @@ index 45d6bd09e..57b2baa91 100644
  static int cns3xxx_pci_read_config(struct pci_bus *bus, unsigned int devfn,
  				   int where, int size, u32 *val)
  {
-@@ -104,6 +178,11 @@ static int cns3xxx_pci_read_config(struct pci_bus *bus, unsigned int devfn,
+@@ -95,6 +169,11 @@ static int cns3xxx_pci_read_config(struct pci_bus *bus, unsigned int devfn,
  
- 	v = __raw_readl(base);
+ 	ret = pci_generic_config_read32(bus, devfn, where, size, val);
  
 +	if (check_master_abort(bus, devfn, where)) {
 +		printk(KERN_ERR "pci error: %04d:%02x:%02x.%02x %02x(%d)= master_abort on read\n", pci_domain_nr(bus), bus->number, PCI_SLOT(devfn), PCI_FUNC(devfn), where, size);
 +		return PCIBIOS_DEVICE_NOT_FOUND;
 +	}
 +
- 	if (bus->number == 0 && devfn == 0 &&
- 			(where & 0xffc) == PCI_CLASS_REVISION) {
+ 	if (ret == PCIBIOS_SUCCESSFUL && !bus->number && !devfn &&
+ 	    (where & 0xffc) == PCI_CLASS_REVISION)
  		/*
-@@ -133,11 +212,19 @@ static int cns3xxx_pci_write_config(struct pci_bus *bus, unsigned int devfn,
- 		return PCIBIOS_SUCCESSFUL;
- 
- 	v = __raw_readl(base);
-+	if (check_master_abort(bus, devfn, where)) {
-+		printk(KERN_ERR "pci error: %04d:%02x:%02x.%02x %02x(%d)=0x%08x master_abort on read\n", pci_domain_nr(bus), bus->number, PCI_SLOT(devfn), PCI_FUNC(devfn), where, size, val);
-+		return PCIBIOS_DEVICE_NOT_FOUND;
-+	}
- 
- 	v &= ~(mask << shift);
- 	v |= (val & mask) << shift;
- 
- 	__raw_writel(v, base);
-+	if (check_master_abort(bus, devfn, where)) {
-+		printk(KERN_ERR "pci error: %04d:%02x:%02x.%02x %02x(%d)=0x%08x master_abort on write\n", pci_domain_nr(bus), bus->number, PCI_SLOT(devfn), PCI_FUNC(devfn), where, size, val);
-+		return PCIBIOS_DEVICE_NOT_FOUND;
-+	}
- 
- 	return PCIBIOS_SUCCESSFUL;
- }
-@@ -165,7 +252,7 @@ static struct pci_ops cns3xxx_pcie_ops = {
+@@ -131,7 +210,7 @@ static struct pci_ops cns3xxx_pcie_ops = {
  static int cns3xxx_pcie_map_irq(const struct pci_dev *dev, u8 slot, u8 pin)
  {
  	struct cns3xxx_pcie *cnspci = pdev_to_cnspci(dev);
@@ -720,21 +686,22 @@ index 45d6bd09e..57b2baa91 100644
  
  	pr_info("PCIe map irq: %04d:%02x:%02x.%02x slot %d, pin %d, irq: %d\n",
  		pci_domain_nr(dev->bus), dev->bus->number, PCI_SLOT(dev->devfn),
-@@ -191,7 +278,12 @@ static struct cns3xxx_pcie cns3xxx_pcie[] = {
+@@ -157,7 +236,13 @@ static struct cns3xxx_pcie cns3xxx_pcie[] = {
  			.end = CNS3XXX_PCIE0_HOST_BASE - 1, /* 176 MiB */
  			.flags = IORESOURCE_MEM,
  		},
 -		.irqs = { IRQ_CNS3XXX_PCIE0_RC, IRQ_CNS3XXX_PCIE0_DEVICE, },
-+		.irqs = { IRQ_CNS3XXX_PCIE0_RC,
-+			  IRQ_CNS3XXX_PCIE0_DEVICE,
-+			  IRQ_CNS3XXX_PCIE0_DEVICE,
-+			  IRQ_CNS3XXX_PCIE0_DEVICE,
-+			  IRQ_CNS3XXX_PCIE0_DEVICE,
-+			},
- 		.hw_pci = {
- 			.domain = 0,
- 			.nr_controllers = 1,
-@@ -216,7 +308,13 @@ static struct cns3xxx_pcie cns3xxx_pcie[] = {
++		.irqs = {
++			IRQ_CNS3XXX_PCIE0_RC,
++			IRQ_CNS3XXX_PCIE0_DEVICE,
++			IRQ_CNS3XXX_PCIE0_DEVICE,
++			IRQ_CNS3XXX_PCIE0_DEVICE,
++			IRQ_CNS3XXX_PCIE0_DEVICE,
++		},
+ 		.port = 0,
+ 	},
+ 	[1] = {
+@@ -176,7 +261,13 @@ static struct cns3xxx_pcie cns3xxx_pcie[] = {
  			.end = CNS3XXX_PCIE1_HOST_BASE - 1, /* 176 MiB */
  			.flags = IORESOURCE_MEM,
  		},
@@ -746,10 +713,10 @@ index 45d6bd09e..57b2baa91 100644
 +			IRQ_CNS3XXX_PCIE1_DEVICE,
 +			IRQ_CNS3XXX_PCIE1_DEVICE,
 +		},
- 		.hw_pci = {
- 			.domain = 1,
- 			.nr_controllers = 1,
-@@ -315,11 +413,25 @@ static void __init cns3xxx_pcie_hw_init(struct cns3xxx_pcie *cnspci)
+ 		.port = 1,
+ 	},
+ };
+@@ -257,11 +348,25 @@ static void __init cns3xxx_pcie_hw_init(struct cns3xxx_pcie *cnspci)
  static int cns3xxx_pcie_abort_handler(unsigned long addr, unsigned int fsr,
  				      struct pt_regs *regs)
  {
@@ -775,7 +742,7 @@ index 45d6bd09e..57b2baa91 100644
  void __init cns3xxx_pcie_init_late(void)
  {
  	int i;
-@@ -331,9 +443,9 @@ void __init cns3xxx_pcie_init_late(void)
+@@ -281,9 +386,9 @@ void __init cns3xxx_pcie_init_late(void)
  			"imprecise external abort");
  
  	for (i = 0; i < ARRAY_SIZE(cns3xxx_pcie); i++) {
@@ -785,13 +752,13 @@ index 45d6bd09e..57b2baa91 100644
 +		if (!cns3xxx_pcie[i].linked)
 +			continue;
  		cns3xxx_pcie_hw_init(&cns3xxx_pcie[i]);
- 		pci_common_init(&cns3xxx_pcie[i].hw_pci);
- 	}
+ 		private_data = &cns3xxx_pcie[i];
+ 		pci_common_init(&hw_pci);
 diff --git a/arch/arm/mm/Kconfig b/arch/arm/mm/Kconfig
-index 7eb94e6fc..e700e1752 100644
+index 41218867..2ce40e41 100644
 --- a/arch/arm/mm/Kconfig
 +++ b/arch/arm/mm/Kconfig
-@@ -827,7 +827,7 @@ config KUSER_HELPERS
+@@ -849,7 +849,7 @@ config VDSO
  
  config DMA_CACHE_RWFO
  	bool "Enable read/write for ownership DMA cache maintenance"
@@ -800,7 +767,7 @@ index 7eb94e6fc..e700e1752 100644
  	default y
  	help
  	  The Snoop Control Unit on ARM11MPCore does not detect the
-@@ -844,6 +844,17 @@ config DMA_CACHE_RWFO
+@@ -866,6 +866,17 @@ config DMA_CACHE_RWFO
  	  in hardware, other workarounds are needed (e.g. cache
  	  maintenance broadcasting in software via FIQ).
  
@@ -818,11 +785,31 @@ index 7eb94e6fc..e700e1752 100644
  config OUTER_CACHE
  	bool
  
+diff --git a/arch/arm/mm/dma.h b/arch/arm/mm/dma.h
+index 70ea6852..d3ea07d7 100644
+--- a/arch/arm/mm/dma.h
++++ b/arch/arm/mm/dma.h
+@@ -4,8 +4,13 @@
+ #include <asm/glue-cache.h>
+ 
+ #ifndef MULTI_CACHE
+-#define dmac_map_area			__glue(_CACHE,_dma_map_area)
+-#define dmac_unmap_area 		__glue(_CACHE,_dma_unmap_area)
++#ifndef CONFIG_DMA_CACHE_FIQ_BROADCAST
++# define dmac_map_area			__glue(_CACHE,_dma_map_area)
++# define dmac_unmap_area 		__glue(_CACHE,_dma_unmap_area)
++#else
++# define dmac_map_area			__glue(fiq,_dma_map_area)
++# define dmac_unmap_area			__glue(fiq,_dma_unmap_area)
++#endif
+ 
+ /*
+  * These are private to the dma-mapping API.  Do not use directly.
 diff --git a/arch/arm/mm/flush.c b/arch/arm/mm/flush.c
-index 265b836b3..242f31ee3 100644
+index 1ec8e759..32c112a1 100644
 --- a/arch/arm/mm/flush.c
 +++ b/arch/arm/mm/flush.c
-@@ -304,6 +304,7 @@ void __sync_icache_dcache(pte_t pteval)
+@@ -319,6 +319,7 @@ void __sync_icache_dcache(pte_t pteval)
  void flush_dcache_page(struct page *page)
  {
  	struct address_space *mapping;
@@ -830,7 +817,7 @@ index 265b836b3..242f31ee3 100644
  
  	/*
  	 * The zero page is never written to, so never has any dirty
-@@ -314,7 +315,10 @@ void flush_dcache_page(struct page *page)
+@@ -329,7 +330,10 @@ void flush_dcache_page(struct page *page)
  
  	mapping = page_mapping(page);
  
@@ -843,11 +830,11 @@ index 265b836b3..242f31ee3 100644
  		clear_bit(PG_dcache_clean, &page->flags);
  	else {
 diff --git a/drivers/ata/ahci_platform.c b/drivers/ata/ahci_platform.c
-index 83c2b8be9..43ed4a6f7 100644
+index 639adb1f..a4e4a47b 100644
 --- a/drivers/ata/ahci_platform.c
 +++ b/drivers/ata/ahci_platform.c
-@@ -29,12 +29,23 @@ static const struct ata_port_info ahci_port_info = {
- 	.port_ops	= &ahci_platform_ops,
+@@ -37,12 +37,23 @@ static struct scsi_host_template ahci_platform_sht = {
+ 	AHCI_SHT(DRV_NAME),
  };
  
 +static const struct ata_port_info cns3xxx_port_info = {
@@ -871,10 +858,10 @@ index 83c2b8be9..43ed4a6f7 100644
  	if (IS_ERR(hpriv))
  		return PTR_ERR(hpriv);
 diff --git a/drivers/i2c/busses/Kconfig b/drivers/i2c/busses/Kconfig
-index 06e99eb64..4c911fa65 100644
+index 7b0aa82e..66e4533b 100644
 --- a/drivers/i2c/busses/Kconfig
 +++ b/drivers/i2c/busses/Kconfig
-@@ -417,6 +417,18 @@ config I2C_CBUS_GPIO
+@@ -440,6 +440,18 @@ config I2C_CBUS_GPIO
  	  This driver can also be built as a module.  If so, the module
  	  will be called i2c-cbus-gpio.
  
@@ -894,19 +881,19 @@ index 06e99eb64..4c911fa65 100644
  	tristate "Freescale CPM1 or CPM2 (MPC8xx/826x)"
  	depends on CPM1 || CPM2
 diff --git a/drivers/i2c/busses/Makefile b/drivers/i2c/busses/Makefile
-index 78d56c54b..8ab6fe04e 100644
+index 37f2819b..2a1aa244 100644
 --- a/drivers/i2c/busses/Makefile
 +++ b/drivers/i2c/busses/Makefile
-@@ -101,6 +101,7 @@ obj-$(CONFIG_I2C_CROS_EC_TUNNEL)	+= i2c-cros-ec-tunnel.o
- obj-$(CONFIG_I2C_ELEKTOR)	+= i2c-elektor.o
- obj-$(CONFIG_I2C_PCA_ISA)	+= i2c-pca-isa.o
- obj-$(CONFIG_I2C_SIBYTE)	+= i2c-sibyte.o
+@@ -111,6 +111,7 @@ obj-$(CONFIG_I2C_VIPERBOARD)	+= i2c-viperboard.o
+ obj-$(CONFIG_I2C_ACORN)		+= i2c-acorn.o
+ obj-$(CONFIG_I2C_BCM_KONA)	+= i2c-bcm-kona.o
+ obj-$(CONFIG_I2C_BRCMSTB)	+= i2c-brcmstb.o
 +obj-$(CONFIG_I2C_CNS3XXX)	+= i2c-cns3xxx.o
- obj-$(CONFIG_SCx200_ACB)	+= scx200_acb.o
- 
- ccflags-$(CONFIG_I2C_DEBUG_BUS) := -DDEBUG
+ obj-$(CONFIG_I2C_CROS_EC_TUNNEL)	+= i2c-cros-ec-tunnel.o
+ obj-$(CONFIG_I2C_ELEKTOR)	+= i2c-elektor.o
+ obj-$(CONFIG_I2C_OPAL)		+= i2c-opal.o
 diff --git a/drivers/mmc/host/sdhci-cns3xxx.c b/drivers/mmc/host/sdhci-cns3xxx.c
-index a7935a8d0..a579d0d98 100644
+index 59f2923f..dbd707d8 100644
 --- a/drivers/mmc/host/sdhci-cns3xxx.c
 +++ b/drivers/mmc/host/sdhci-cns3xxx.c
 @@ -88,9 +88,9 @@ static const struct sdhci_pltfm_data sdhci_cns3xxx_pdata = {
@@ -921,35 +908,11 @@ index a7935a8d0..a579d0d98 100644
  };
  
  static int sdhci_cns3xxx_probe(struct platform_device *pdev)
-diff --git a/drivers/net/ethernet/Kconfig b/drivers/net/ethernet/Kconfig
-index 1ed1fbba5..7c872ff82 100644
---- a/drivers/net/ethernet/Kconfig
-+++ b/drivers/net/ethernet/Kconfig
-@@ -34,6 +34,7 @@ source "drivers/net/ethernet/adi/Kconfig"
- source "drivers/net/ethernet/broadcom/Kconfig"
- source "drivers/net/ethernet/brocade/Kconfig"
- source "drivers/net/ethernet/calxeda/Kconfig"
-+source "drivers/net/ethernet/cavium/Kconfig"
- source "drivers/net/ethernet/chelsio/Kconfig"
- source "drivers/net/ethernet/cirrus/Kconfig"
- source "drivers/net/ethernet/cisco/Kconfig"
-diff --git a/drivers/net/ethernet/Makefile b/drivers/net/ethernet/Makefile
-index 6e0b629e9..7a9f7d7b5 100644
---- a/drivers/net/ethernet/Makefile
-+++ b/drivers/net/ethernet/Makefile
-@@ -20,6 +20,7 @@ obj-$(CONFIG_NET_BFIN) += adi/
- obj-$(CONFIG_NET_VENDOR_BROADCOM) += broadcom/
- obj-$(CONFIG_NET_VENDOR_BROCADE) += brocade/
- obj-$(CONFIG_NET_CALXEDA_XGMAC) += calxeda/
-+obj-$(CONFIG_NET_VENDOR_CAVIUM) += cavium/
- obj-$(CONFIG_NET_VENDOR_CHELSIO) += chelsio/
- obj-$(CONFIG_NET_VENDOR_CIRRUS) += cirrus/
- obj-$(CONFIG_NET_VENDOR_CISCO) += cisco/
 diff --git a/drivers/net/phy/broadcom.c b/drivers/net/phy/broadcom.c
-index 64860c041..be65130fa 100644
+index 3ce5d951..80f46d34 100644
 --- a/drivers/net/phy/broadcom.c
 +++ b/drivers/net/phy/broadcom.c
-@@ -393,6 +393,11 @@ static int bcm5481_config_aneg(struct phy_device *phydev)
+@@ -332,6 +332,11 @@ static int bcm5481_config_aneg(struct phy_device *phydev)
  		/* Write bits 14:0. */
  		reg |= (1 << 15);
  		phy_write(phydev, 0x18, reg);
@@ -961,11 +924,25 @@ index 64860c041..be65130fa 100644
  	}
  
  	return ret;
+diff --git a/drivers/pci/probe.c b/drivers/pci/probe.c
+index b83df942..095c243f 100644
+--- a/drivers/pci/probe.c
++++ b/drivers/pci/probe.c
+@@ -1967,7 +1967,8 @@ static void pcie_write_mrrs(struct pci_dev *dev)
+ 	/* In the "safe" case, do not configure the MRRS.  There appear to be
+ 	 * issues with setting MRRS to 0 on a number of devices.
+ 	 */
+-	if (pcie_bus_config != PCIE_BUS_PERFORMANCE)
++	if (pcie_bus_config != PCIE_BUS_PERFORMANCE &&
++	    pcie_bus_config != PCIE_BUS_PEER2PEER)
+ 		return;
+ 
+ 	/* For Max performance, the MRRS must be set to the largest supported
 diff --git a/drivers/spi/Kconfig b/drivers/spi/Kconfig
-index 84e7c9e6c..3fc7f55f4 100644
+index 8b9c2a38..dd868fc1 100644
 --- a/drivers/spi/Kconfig
 +++ b/drivers/spi/Kconfig
-@@ -171,6 +171,13 @@ config SPI_CLPS711X
+@@ -183,6 +183,13 @@ config SPI_CLPS711X
  	  This enables dedicated general purpose SPI/Microwire1-compatible
  	  master mode interface (SSI1) for CLPS711X-based CPUs.
  
@@ -980,39 +957,38 @@ index 84e7c9e6c..3fc7f55f4 100644
  	tristate "Freescale Coldfire QSPI controller"
  	depends on (M520x || M523x || M5249 || M525x || M527x || M528x || M532x)
 diff --git a/drivers/spi/Makefile b/drivers/spi/Makefile
-index 78f24ca36..aba0d8eb2 100644
+index 31fb7fb2..53990d31 100644
 --- a/drivers/spi/Makefile
 +++ b/drivers/spi/Makefile
-@@ -25,6 +25,7 @@ obj-$(CONFIG_SPI_BITBANG)		+= spi-bitbang.o
+@@ -26,6 +26,7 @@ obj-$(CONFIG_SPI_BITBANG)		+= spi-bitbang.o
  obj-$(CONFIG_SPI_BUTTERFLY)		+= spi-butterfly.o
  obj-$(CONFIG_SPI_CADENCE)		+= spi-cadence.o
  obj-$(CONFIG_SPI_CLPS711X)		+= spi-clps711x.o
 +obj-$(CONFIG_SPI_CNS3XXX)		+= spi-cns3xxx.o
  obj-$(CONFIG_SPI_COLDFIRE_QSPI)		+= spi-coldfire-qspi.o
  obj-$(CONFIG_SPI_DAVINCI)		+= spi-davinci.o
- obj-$(CONFIG_SPI_DESIGNWARE)		+= spi-dw.o
-diff --git a/drivers/spi/spi-bitbang.c b/drivers/spi/spi-bitbang.c
-index fecdda270..a19f801b4 100644
---- a/drivers/spi/spi-bitbang.c
-+++ b/drivers/spi/spi-bitbang.c
-@@ -335,6 +335,10 @@ static int spi_bitbang_transfer_one(struct spi_master *master,
- 			 */
- 			if (!m->is_dma_mapped)
- 				t->rx_dma = t->tx_dma = 0;
+ obj-$(CONFIG_SPI_DLN2)			+= spi-dln2.o
+diff --git a/drivers/spi/spi.c b/drivers/spi/spi.c
+index dee1cb87..39de3318 100644
+--- a/drivers/spi/spi.c
++++ b/drivers/spi/spi.c
+@@ -933,6 +933,9 @@ static int spi_transfer_one_message(struct spi_master *master,
+ 	list_for_each_entry(xfer, &msg->transfers, transfer_list) {
+ 		trace_spi_transfer_start(msg, xfer);
+ 
++		xfer->last_in_message_list =
++			list_is_last(&xfer->transfer_list, &msg->transfers);
 +
-+			t->last_in_message_list =
-+				list_is_last(&t->transfer_list, &m->transfers);
-+
- 			status = bitbang->txrx_bufs(spi, t);
- 		}
- 		if (status > 0)
+ 		spi_statistics_add_transfer_stats(statm, xfer, master);
+ 		spi_statistics_add_transfer_stats(stats, xfer, master);
+ 
 diff --git a/drivers/usb/dwc2/platform.c b/drivers/usb/dwc2/platform.c
-index 121dbdafc..f25dd2521 100644
+index 39c1cbf0..0ea9267b 100644
 --- a/drivers/usb/dwc2/platform.c
 +++ b/drivers/usb/dwc2/platform.c
-@@ -105,6 +105,34 @@ static const struct dwc2_core_params params_rk3066 = {
- 	.uframe_sched			= -1,
- };
+@@ -144,6 +144,34 @@ static int __dwc2_lowlevel_hw_enable(struct dwc2_hsotg *hsotg)
+ 	return ret;
+ }
  
 +static const struct dwc2_core_params params_cns3xxx = {
 +	.otg_cap			= 2,	/* non-HNP/non-SRP capable */
@@ -1043,9 +1019,9 @@ index 121dbdafc..f25dd2521 100644
 +};
 +
  /**
-  * dwc2_driver_remove() - Called when the DWC_otg core is unregistered with the
-  * DWC_otg driver
-@@ -165,6 +193,9 @@ static int dwc2_driver_probe(struct platform_device *dev)
+  * dwc2_lowlevel_hw_enable - enable platform lowlevel hw resources
+  * @hsotg: The driver state
+@@ -344,6 +372,9 @@ static int dwc2_driver_probe(struct platform_device *dev)
  		/* Default all params to autodetect */
  		dwc2_set_all_params(&defparams, -1);
  		params = &defparams;
@@ -1055,20 +1031,30 @@ index 121dbdafc..f25dd2521 100644
  
  		/*
  		 * Disable descriptor dma mode by default as the HW can support
+diff --git a/include/linux/pci.h b/include/linux/pci.h
+index 5f37614f..1e30dbb7 100644
+--- a/include/linux/pci.h
++++ b/include/linux/pci.h
+@@ -757,7 +757,7 @@ enum pcie_bus_config_types {
+ 	PCIE_BUS_DEFAULT,	/* ensure MPS matches upstream bridge */
+ 	PCIE_BUS_SAFE,		/* use largest MPS boot-time devices support */
+ 	PCIE_BUS_PERFORMANCE,	/* use MPS and MRRS for best performance */
+-	PCIE_BUS_PEER2PEER,	/* set MPS = 128 for all devices */
++	PCIE_BUS_PEER2PEER,	/* set MPS and MRSS to 128 for all devices */
+ };
+ 
+ extern enum pcie_bus_config_types pcie_bus_config;
 diff --git a/include/linux/spi/spi.h b/include/linux/spi/spi.h
-index 46d188a99..8bd1baa04 100644
+index cce80e6d..89508207 100644
 --- a/include/linux/spi/spi.h
 +++ b/include/linux/spi/spi.h
-@@ -628,6 +628,13 @@ struct spi_transfer {
+@@ -698,6 +698,10 @@ struct spi_transfer {
  	u32		speed_hz;
  
  	struct list_head transfer_list;
 +
 +#ifdef CONFIG_ARCH_CNS3XXX
 +	unsigned	last_in_message_list;
-+#ifdef CONFIG_SPI_CNS3XXX_2IOREAD
-+	u8	dio_read;
-+#endif
 +#endif
  };
  

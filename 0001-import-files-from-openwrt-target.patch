@@ -1,25 +1,24 @@
-From 885c492707f8597f649e8c396b0de8ee661cb826 Mon Sep 17 00:00:00 2001
-From: YangKunlun <yangkunlun@gmail.com>
-Date: Sun, 1 Nov 2015 09:29:13 +0800
-Subject: [PATCH 1/2] import files from openwrt target
+From 9ebc299e1a4704781853449af6b93cc665bdbd9a Mon Sep 17 00:00:00 2001
+From: root <root@seagate-dev.WeTube>
+Date: Fri, 14 Jul 2017 13:54:06 +0000
+Subject: [PATCH 1/2] add openwrt files
 
 ---
  arch/arm/mach-cns3xxx/cns3xxx_fiq.S       |   87 ++
  arch/arm/mach-cns3xxx/gpio.c              |  292 +++++++
- arch/arm/mach-cns3xxx/headsmp.S           |   42 +
+ arch/arm/mach-cns3xxx/headsmp.S           |   41 +
  arch/arm/mach-cns3xxx/hotplug.c           |  130 +++
  arch/arm/mach-cns3xxx/include/mach/gpio.h |   17 +
  arch/arm/mach-cns3xxx/include/mach/smp.h  |    8 +
- arch/arm/mach-cns3xxx/laguna.c            | 1079 +++++++++++++++++++++++
- arch/arm/mach-cns3xxx/localtimer.c        |   26 +
- arch/arm/mach-cns3xxx/platsmp.c           |  337 +++++++
+ arch/arm/mach-cns3xxx/laguna.c            | 1081 +++++++++++++++++++++++
+ arch/arm/mach-cns3xxx/platsmp.c           |  327 +++++++
  drivers/i2c/busses/i2c-cns3xxx.c          |  374 ++++++++
- drivers/net/ethernet/cavium/Kconfig       |   24 +
- drivers/net/ethernet/cavium/Makefile      |    5 +
- drivers/net/ethernet/cavium/cns3xxx_eth.c | 1358 +++++++++++++++++++++++++++++
+ drivers/net/ethernet/cavium/Kconfig       |   62 +-
+ drivers/net/ethernet/cavium/Makefile      |    4 +-
+ drivers/net/ethernet/cavium/cns3xxx_eth.c | 1340 +++++++++++++++++++++++++++++
  drivers/spi/spi-cns3xxx.c                 |  448 ++++++++++
  include/linux/platform_data/cns3xxx.h     |   26 +
- 15 files changed, 4253 insertions(+)
+ 14 files changed, 4188 insertions(+), 49 deletions(-)
  create mode 100644 arch/arm/mach-cns3xxx/cns3xxx_fiq.S
  create mode 100644 arch/arm/mach-cns3xxx/gpio.c
  create mode 100644 arch/arm/mach-cns3xxx/headsmp.S
@@ -27,18 +26,15 @@ Subject: [PATCH 1/2] import files from openwrt target
  create mode 100644 arch/arm/mach-cns3xxx/include/mach/gpio.h
  create mode 100644 arch/arm/mach-cns3xxx/include/mach/smp.h
  create mode 100644 arch/arm/mach-cns3xxx/laguna.c
- create mode 100644 arch/arm/mach-cns3xxx/localtimer.c
  create mode 100644 arch/arm/mach-cns3xxx/platsmp.c
  create mode 100644 drivers/i2c/busses/i2c-cns3xxx.c
- create mode 100644 drivers/net/ethernet/cavium/Kconfig
- create mode 100644 drivers/net/ethernet/cavium/Makefile
  create mode 100644 drivers/net/ethernet/cavium/cns3xxx_eth.c
  create mode 100644 drivers/spi/spi-cns3xxx.c
  create mode 100644 include/linux/platform_data/cns3xxx.h
 
 diff --git a/arch/arm/mach-cns3xxx/cns3xxx_fiq.S b/arch/arm/mach-cns3xxx/cns3xxx_fiq.S
 new file mode 100644
-index 000000000..b1155ef57
+index 00000000..b1155ef5
 --- /dev/null
 +++ b/arch/arm/mach-cns3xxx/cns3xxx_fiq.S
 @@ -0,0 +1,87 @@
@@ -131,7 +127,7 @@ index 000000000..b1155ef57
 +cns3xxx_fiq_end:
 diff --git a/arch/arm/mach-cns3xxx/gpio.c b/arch/arm/mach-cns3xxx/gpio.c
 new file mode 100644
-index 000000000..b6e40614d
+index 00000000..19de24c3
 --- /dev/null
 +++ b/arch/arm/mach-cns3xxx/gpio.c
 @@ -0,0 +1,292 @@
@@ -276,10 +272,10 @@ index 000000000..b6e40614d
 +/* one interrupt per GPIO controller (GPIOA/GPIOB)
 + * this is called in task context, with IRQs enabled
 + */
-+static void cns3xxx_gpio_irq_handler(unsigned int irq, struct irq_desc *desc)
++static void cns3xxx_gpio_irq_handler(struct irq_desc *desc)
 +{
-+	struct cns3xxx_gpio_chip *cchip = irq_get_handler_data(irq);
-+	struct irq_chip *chip = irq_get_chip(irq);
++	struct cns3xxx_gpio_chip *cchip = irq_desc_get_handler_data(desc);
++	struct irq_chip *chip = irq_desc_get_chip(desc);
 +	u16 i;
 +	u32 reg;
 +
@@ -348,9 +344,9 @@ index 000000000..b6e40614d
 +	spin_unlock_irqrestore(&cchip->lock, flags);
 +
 +	if (type & (IRQ_TYPE_LEVEL_LOW | IRQ_TYPE_LEVEL_HIGH))
-+		__irq_set_handler_locked(d->irq, handle_level_irq);
++		irq_set_handler_locked(d, handle_level_irq);
 +	else if (type & (IRQ_TYPE_EDGE_FALLING | IRQ_TYPE_EDGE_RISING))
-+		__irq_set_handler_locked(d->irq, handle_edge_irq);
++		irq_set_handler_locked(d, handle_edge_irq);
 +
 +	return 0;
 +}
@@ -429,10 +425,10 @@ index 000000000..b6e40614d
 +}
 diff --git a/arch/arm/mach-cns3xxx/headsmp.S b/arch/arm/mach-cns3xxx/headsmp.S
 new file mode 100644
-index 000000000..3b46bdc32
+index 00000000..f0da8ec0
 --- /dev/null
 +++ b/arch/arm/mach-cns3xxx/headsmp.S
-@@ -0,0 +1,42 @@
+@@ -0,0 +1,41 @@
 +/*
 + *  linux/arch/arm/mach-cns3xxx/headsmp.S
 + *
@@ -447,8 +443,6 @@ index 000000000..3b46bdc32
 + */
 +#include <linux/linkage.h>
 +#include <linux/init.h>
-+
-+	__CPUINIT
 +
 +/*
 + * CNS3XXX specific entry point for secondary CPUs.  This provides
@@ -471,13 +465,14 @@ index 000000000..3b46bdc32
 +	 * should now contain the SVC stack for this core
 +	 */
 +	b	secondary_startup
++ENDPROC(cns3xxx_secondary_startup)
 +
-+	.align
++	.align 2
 +1:	.long	.
 +	.long	pen_release
 diff --git a/arch/arm/mach-cns3xxx/hotplug.c b/arch/arm/mach-cns3xxx/hotplug.c
 new file mode 100644
-index 000000000..be0d499a3
+index 00000000..be0d499a
 --- /dev/null
 +++ b/arch/arm/mach-cns3xxx/hotplug.c
 @@ -0,0 +1,130 @@
@@ -613,7 +608,7 @@ index 000000000..be0d499a3
 +}
 diff --git a/arch/arm/mach-cns3xxx/include/mach/gpio.h b/arch/arm/mach-cns3xxx/include/mach/gpio.h
 new file mode 100644
-index 000000000..8c66748ac
+index 00000000..8c66748a
 --- /dev/null
 +++ b/arch/arm/mach-cns3xxx/include/mach/gpio.h
 @@ -0,0 +1,17 @@
@@ -636,7 +631,7 @@ index 000000000..8c66748ac
 +#endif
 diff --git a/arch/arm/mach-cns3xxx/include/mach/smp.h b/arch/arm/mach-cns3xxx/include/mach/smp.h
 new file mode 100644
-index 000000000..e5bc56823
+index 00000000..e5bc5682
 --- /dev/null
 +++ b/arch/arm/mach-cns3xxx/include/mach/smp.h
 @@ -0,0 +1,8 @@
@@ -650,10 +645,10 @@ index 000000000..e5bc56823
 +#endif
 diff --git a/arch/arm/mach-cns3xxx/laguna.c b/arch/arm/mach-cns3xxx/laguna.c
 new file mode 100644
-index 000000000..99c4108b2
+index 00000000..6c779233
 --- /dev/null
 +++ b/arch/arm/mach-cns3xxx/laguna.c
-@@ -0,0 +1,1079 @@
+@@ -0,0 +1,1081 @@
 +/*
 + * Gateworks Corporation Laguna Platform
 + *
@@ -1470,7 +1465,7 @@ index 000000000..99c4108b2
 +
 +	platform_device_register(&laguna_i2c_controller);
 +
-+	/* Set ext_int 0-3 drive strength to 21 mA */
++	/* Set I2C 0-3 drive strength to 21 mA */
 +	reg = MISC_IO_PAD_DRIVE_STRENGTH_CTRL_B;
 +	*reg |= 0x300;
 +
@@ -1710,7 +1705,9 @@ index 000000000..99c4108b2
 +			laguna_gpio_leds[0].gpio = 107;
 +			laguna_gpio_leds[1].gpio = 106;
 +			laguna_gpio_leds_data.num_leds = 2;
-+		} else if (strncmp(laguna_info.model, "GW2391", 6) == 0) {
++		} else if ( (strncmp(laguna_info.model, "GW2391", 6) == 0)
++			 || (strncmp(laguna_info.model, "GW2393", 6) == 0) )
++		{
 +			// configure GPIO's
 +			laguna_register_gpio(ARRAY_AND_SIZE(laguna_gpio_gw2391));
 +			// configure LED's
@@ -1733,44 +1730,12 @@ index 000000000..99c4108b2
 +	.init_machine	= laguna_init,
 +	.restart	= cns3xxx_restart,
 +MACHINE_END
-diff --git a/arch/arm/mach-cns3xxx/localtimer.c b/arch/arm/mach-cns3xxx/localtimer.c
-new file mode 100644
-index 000000000..5e1111cf6
---- /dev/null
-+++ b/arch/arm/mach-cns3xxx/localtimer.c
-@@ -0,0 +1,26 @@
-+/* linux/arch/arm/mach-cns3xxx/localtimer.c
-+ *
-+ * Cloned from linux/arch/arm/mach-realview/localtimer.c
-+ *
-+ *  Copyright (C) 2002 ARM Ltd.
-+ *  All Rights Reserved
-+ *
-+ * This program is free software; you can redistribute it and/or modify
-+ * it under the terms of the GNU General Public License version 2 as
-+ * published by the Free Software Foundation.
-+*/
-+
-+#include <linux/clockchips.h>
-+
-+#include <asm/irq.h>
-+#include <asm/localtimer.h>
-+
-+/*
-+ * Setup the local clock events for a CPU.
-+ */
-+int __cpuinit local_timer_setup(struct clock_event_device *evt)
-+{
-+	evt->irq = IRQ_LOCALTIMER;
-+	twd_timer_setup(evt);
-+	return 0;
-+}
 diff --git a/arch/arm/mach-cns3xxx/platsmp.c b/arch/arm/mach-cns3xxx/platsmp.c
 new file mode 100644
-index 000000000..53598857f
+index 00000000..cb81d1e7
 --- /dev/null
 +++ b/arch/arm/mach-cns3xxx/platsmp.c
-@@ -0,0 +1,337 @@
+@@ -0,0 +1,327 @@
 +/*
 + *  linux/arch/arm/mach-cns3xxx/platsmp.c
 + *
@@ -1839,7 +1804,7 @@ index 000000000..53598857f
 +#define SCU_CPU_STATUS 0x08
 +static void __iomem *scu_base;
 +
-+static inline void __cpuinit cns3xxx_set_fiq_regs(unsigned int cpu)
++static inline void cns3xxx_set_fiq_regs(unsigned int cpu)
 +{
 +	struct pt_regs FIQ_regs;
 +	struct fiq_req *fiq_req = &per_cpu(fiq_data, !cpu);
@@ -1874,7 +1839,7 @@ index 000000000..53598857f
 + * observers, irrespective of whether they're taking part in coherency
 + * or not.  This is necessary for the hotplug code to work reliably.
 + */
-+static void __cpuinit write_pen_release(int val)
++static void write_pen_release(int val)
 +{
 +	pen_release = val;
 +	smp_wmb();
@@ -1884,7 +1849,7 @@ index 000000000..53598857f
 +
 +static DEFINE_SPINLOCK(boot_lock);
 +
-+static void __cpuinit cns3xxx_secondary_init(unsigned int cpu)
++static void cns3xxx_secondary_init(unsigned int cpu)
 +{
 +	/*
 +	 * Setup Secondary Core FIQ regs
@@ -1904,7 +1869,7 @@ index 000000000..53598857f
 +	spin_unlock(&boot_lock);
 +}
 +
-+static int __cpuinit cns3xxx_boot_secondary(unsigned int cpu, struct task_struct *idle)
++static int cns3xxx_boot_secondary(unsigned int cpu, struct task_struct *idle)
 +{
 +	unsigned long timeout;
 +
@@ -1975,16 +1940,6 @@ index 000000000..53598857f
 +
 +static void __init cns3xxx_smp_prepare_cpus(unsigned int max_cpus)
 +{
-+	int i;
-+
-+	/*
-+	 * Initialise the present map, which describes the set of CPUs
-+	 * actually populated at the present time.
-+	 */
-+	for (i = 0; i < max_cpus; i++) {
-+		set_cpu_present(i, true);
-+	}
-+
 +	/*
 +	 * enable SCU
 +	 */
@@ -2110,7 +2065,7 @@ index 000000000..53598857f
 +};
 diff --git a/drivers/i2c/busses/i2c-cns3xxx.c b/drivers/i2c/busses/i2c-cns3xxx.c
 new file mode 100644
-index 000000000..7acff37d2
+index 00000000..7acff37d
 --- /dev/null
 +++ b/drivers/i2c/busses/i2c-cns3xxx.c
 @@ -0,0 +1,374 @@
@@ -2489,52 +2444,99 @@ index 000000000..7acff37d2
 +MODULE_DESCRIPTION("Cavium CNS3XXX I2C Controller");
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/net/ethernet/cavium/Kconfig b/drivers/net/ethernet/cavium/Kconfig
-new file mode 100644
-index 000000000..79eebe286
---- /dev/null
+index 8fb84e69..79eebe28 100644
+--- a/drivers/net/ethernet/cavium/Kconfig
 +++ b/drivers/net/ethernet/cavium/Kconfig
-@@ -0,0 +1,24 @@
-+config NET_VENDOR_CAVIUM
+@@ -1,56 +1,24 @@
+-#
+-# Cavium ethernet device configuration
+-#
+-
+ config NET_VENDOR_CAVIUM
+-	bool "Cavium ethernet drivers"
+-	depends on PCI
 +	bool "Cavium devices"
-+	default y
+ 	default y
 +	depends on ARCH_CNS3XXX
-+	---help---
+ 	---help---
+-	  Select this option if you want enable Cavium network support.
 +	  If you have a network (Ethernet) chipset belonging to this class,
 +	  say Y.
-+
+ 
+-	  If you have a Cavium SoC or network adapter, say Y.
 +	  Note that the answer to this question does not directly affect
 +	  the kernel: saying N will just case the configurator to skip all
 +	  the questions regarding AMD chipsets. If you say Y, you will be asked
 +	  for your specific chipset/driver in the following questions.
-+
-+if NET_VENDOR_CAVIUM
-+
+ 
+ if NET_VENDOR_CAVIUM
+ 
+-config THUNDER_NIC_PF
+-	tristate "Thunder Physical function driver"
+-	depends on 64BIT
+-	select THUNDER_NIC_BGX
+-	---help---
+-	  This driver supports Thunder's NIC physical function.
+-	  The NIC provides the controller and DMA engines to
+-	  move network traffic to/from the memory. The NIC
+-	  works closely with TNS, BGX and SerDes to implement the
+-	  functions replacing and virtualizing those of a typical
+-	  standalone PCIe NIC chip.
+-
+-config THUNDER_NIC_VF
+-	tristate "Thunder Virtual function driver"
+-	depends on 64BIT
+-	---help---
+-	  This driver supports Thunder's NIC virtual function
+-
+-config	THUNDER_NIC_BGX
+-	tristate "Thunder MAC interface driver (BGX)"
+-	depends on 64BIT
 +config CNS3XXX_ETH
 +	tristate "Cavium CNS3xxx Ethernet support"
 +	depends on ARCH_CNS3XXX
-+	select PHYLIB
+ 	select PHYLIB
+-	select MDIO_OCTEON
+-	---help---
+-	  This driver supports programming and controlling of MAC
+-	  interface from NIC physical function driver.
+-
+-config LIQUIDIO
+-	tristate "Cavium LiquidIO support"
+-	depends on 64BIT
+-	select PTP_1588_CLOCK
+-	select FW_LOADER
+-	select LIBCRC32C
+-	---help---
+-	  This driver supports Cavium LiquidIO Intelligent Server Adapters
+-	  based on CN66XX and CN68XX chips.
+-
+-	  To compile this driver as a module, choose M here: the module
+-	  will be called liquidio.  This is recommended.
 +	help
 +	  Say Y here if you want to use built-in Ethernet ports
 +	  on CNS3XXX processor.
-+
+ 
+-endif # NET_VENDOR_CAVIUM
 +endif
 diff --git a/drivers/net/ethernet/cavium/Makefile b/drivers/net/ethernet/cavium/Makefile
-new file mode 100644
-index 000000000..badd2404a
---- /dev/null
+index d22f886a..badd2404 100644
+--- a/drivers/net/ethernet/cavium/Makefile
 +++ b/drivers/net/ethernet/cavium/Makefile
-@@ -0,0 +1,5 @@
-+#
-+# Makefile for the Cavium ethernet device drivers.
-+#
+@@ -1,5 +1,5 @@
+ #
+ # Makefile for the Cavium ethernet device drivers.
+ #
+-obj-$(CONFIG_NET_VENDOR_CAVIUM) += thunder/
+-obj-$(CONFIG_NET_VENDOR_CAVIUM) += liquidio/
 +
 +obj-$(CONFIG_CNS3XXX_ETH) += cns3xxx_eth.o
 diff --git a/drivers/net/ethernet/cavium/cns3xxx_eth.c b/drivers/net/ethernet/cavium/cns3xxx_eth.c
 new file mode 100644
-index 000000000..e2db63687
+index 00000000..51b01876
 --- /dev/null
 +++ b/drivers/net/ethernet/cavium/cns3xxx_eth.c
-@@ -0,0 +1,1358 @@
+@@ -0,0 +1,1340 @@
 +/*
 + * Cavium CNS3xxx Gigabit driver for Linux
 + *
@@ -2593,7 +2595,6 @@ index 000000000..e2db63687
 +#define FIRST_SEGMENT 0x20000000
 +#define LAST_SEGMENT 0x10000000
 +#define FORCE_ROUTE 0x04000000
-+#define IP_CHECKSUM 0x00040000
 +#define UDP_CHECKSUM 0x00020000
 +#define TCP_CHECKSUM 0x00010000
 +
@@ -2844,8 +2845,6 @@ index 000000000..e2db63687
 +struct mii_bus *mdio_bus;
 +static int ports_open;
 +static struct port *switch_port_tab[4];
-+static struct dma_pool *rx_dma_pool;
-+static struct dma_pool *tx_dma_pool;
 +struct net_device *napi_dev;
 +
 +static int cns3xxx_mdio_cmd(struct mii_bus *bus, int phy_id, int location,
@@ -3058,14 +3057,14 @@ index 000000000..e2db63687
 +	unsigned int phys;
 +
 +	for (received += rx_ring->alloc_count; received > 0; received--) {
-+		buf = kmalloc(RX_SEGMENT_ALLOC_SIZE, GFP_ATOMIC);
++		buf = napi_alloc_frag(RX_SEGMENT_ALLOC_SIZE);
 +		if (!buf)
 +			break;
 +
 +		phys = dma_map_single(sw->dev, buf + SKB_HEAD_ALIGN,
 +				      RX_SEGMENT_MRU, DMA_FROM_DEVICE);
 +		if (dma_mapping_error(sw->dev, phys)) {
-+			kfree(buf);
++			skb_free_frag(buf);
 +			break;
 +		}
 +
@@ -3176,7 +3175,7 @@ index 000000000..e2db63687
 +		dma_unmap_single(sw->dev, rx_ring->phys_tab[i],
 +				 RX_SEGMENT_MRU, DMA_FROM_DEVICE);
 +
-+		skb = build_skb(rx_ring->buff_tab[i], 0);
++		skb = build_skb(rx_ring->buff_tab[i], RX_SEGMENT_ALLOC_SIZE);
 +		if (!skb)
 +			break;
 +
@@ -3199,7 +3198,7 @@ index 000000000..e2db63687
 +			sw->frag_first = skb;
 +		else {
 +			if (sw->frag_first == sw->frag_last)
-+				skb_frag_add_head(sw->frag_first, skb);
++				skb_shinfo(sw->frag_first)->frag_list = skb;
 +			else
 +				sw->frag_last->next = skb;
 +			sw->frag_first->len += skb->len;
@@ -3255,9 +3254,10 @@ index 000000000..e2db63687
 +	if (!received) {
 +		napi_complete(napi);
 +		enable_irq(sw->rx_irq);
++		budget = 0;
 +
-+		/* if rx descriptors are full schedule another poll */
-+		if (rx_ring->desc[(i-1) & (RX_DESCS-1)].cown)
++		/* If 1 or more frames came in during IRQ enable, re-schedule */
++		if (rx_ring->desc[i].cown)
 +			eth_schedule_poll(sw);
 +	}
 +
@@ -3270,7 +3270,7 @@ index 000000000..e2db63687
 +	wmb();
 +	enable_rx_dma(sw);
 +
-+	return received;
++	return budget;
 +}
 +
 +static void eth_set_desc(struct sw *sw, struct _tx_ring *tx_ring, int index,
@@ -3435,21 +3435,18 @@ index 000000000..e2db63687
 +
 +	__raw_writel(QUEUE_THRESHOLD, &sw->regs->dma_ring_ctrl);
 +
-+	if (!(rx_dma_pool = dma_pool_create(DRV_NAME, sw->dev,
-+					    RX_POOL_ALLOC_SIZE, 32, 0)))
++	rx_ring->desc = dmam_alloc_coherent(sw->dev, RX_POOL_ALLOC_SIZE,
++					    &rx_ring->phys_addr, GFP_KERNEL);
++	if (!rx_ring->desc)
 +		return -ENOMEM;
-+
-+	if (!(rx_ring->desc = dma_pool_alloc(rx_dma_pool, GFP_KERNEL,
-+					      &rx_ring->phys_addr)))
-+		return -ENOMEM;
-+	memset(rx_ring->desc, 0, RX_POOL_ALLOC_SIZE);
 +
 +	/* Setup RX buffers */
++	memset(rx_ring->desc, 0, RX_POOL_ALLOC_SIZE);
 +	for (i = 0; i < RX_DESCS; i++) {
 +		struct rx_desc *desc = &(rx_ring)->desc[i];
 +		void *buf;
 +
-+		buf = kzalloc(RX_SEGMENT_ALLOC_SIZE, GFP_KERNEL);
++		buf = netdev_alloc_frag(RX_SEGMENT_ALLOC_SIZE);
 +		if (!buf)
 +			return -ENOMEM;
 +
@@ -3471,16 +3468,13 @@ index 000000000..e2db63687
 +	__raw_writel(rx_ring->phys_addr, &sw->regs->fs_desc_ptr0);
 +	__raw_writel(rx_ring->phys_addr, &sw->regs->fs_desc_base_addr0);
 +
-+	if (!(tx_dma_pool = dma_pool_create(DRV_NAME, sw->dev,
-+					    TX_POOL_ALLOC_SIZE, 32, 0)))
++	tx_ring->desc = dmam_alloc_coherent(sw->dev, TX_POOL_ALLOC_SIZE,
++					    &tx_ring->phys_addr, GFP_KERNEL);
++	if (!tx_ring->desc)
 +		return -ENOMEM;
-+
-+	if (!(tx_ring->desc = dma_pool_alloc(tx_dma_pool, GFP_KERNEL,
-+					      &tx_ring->phys_addr)))
-+		return -ENOMEM;
-+	memset(tx_ring->desc, 0, TX_POOL_ALLOC_SIZE);
 +
 +	/* Setup TX buffers */
++	memset(tx_ring->desc, 0, TX_POOL_ALLOC_SIZE);
 +	for (i = 0; i < TX_DESCS; i++) {
 +		struct tx_desc *desc = &(tx_ring)->desc[i];
 +		tx_ring->buff_tab[i] = 0;
@@ -3498,39 +3492,30 @@ index 000000000..e2db63687
 +static void destroy_rings(struct sw *sw)
 +{
 +	int i;
-+	if (sw->rx_ring.desc) {
-+		for (i = 0; i < RX_DESCS; i++) {
-+			struct _rx_ring *rx_ring = &sw->rx_ring;
-+			struct rx_desc *desc = &(rx_ring)->desc[i];
-+			struct sk_buff *skb = sw->rx_ring.buff_tab[i];
 +
-+			if (!skb)
-+				continue;
++	for (i = 0; i < RX_DESCS; i++) {
++		struct _rx_ring *rx_ring = &sw->rx_ring;
++		struct rx_desc *desc = &(rx_ring)->desc[i];
++		void *buf = sw->rx_ring.buff_tab[i];
 +
-+			dma_unmap_single(sw->dev, desc->sdp, RX_SEGMENT_MRU,
-+					 DMA_FROM_DEVICE);
-+			dev_kfree_skb(skb);
-+		}
-+		dma_pool_free(rx_dma_pool, sw->rx_ring.desc, sw->rx_ring.phys_addr);
-+		dma_pool_destroy(rx_dma_pool);
-+		rx_dma_pool = 0;
-+		sw->rx_ring.desc = 0;
++		if (!buf)
++			continue;
++
++		dma_unmap_single(sw->dev, desc->sdp, RX_SEGMENT_MRU,
++				 DMA_FROM_DEVICE);
++		skb_free_frag(buf);
 +	}
-+	if (sw->tx_ring.desc) {
-+		for (i = 0; i < TX_DESCS; i++) {
-+			struct _tx_ring *tx_ring = &sw->tx_ring;
-+			struct tx_desc *desc = &(tx_ring)->desc[i];
-+			struct sk_buff *skb = sw->tx_ring.buff_tab[i];
-+			if (skb) {
-+				dma_unmap_single(sw->dev, desc->sdp,
-+					skb->len, DMA_TO_DEVICE);
-+				dev_kfree_skb(skb);
-+			}
-+		}
-+		dma_pool_free(tx_dma_pool, sw->tx_ring.desc, sw->tx_ring.phys_addr);
-+		dma_pool_destroy(tx_dma_pool);
-+		tx_dma_pool = 0;
-+		sw->tx_ring.desc = 0;
++
++	for (i = 0; i < TX_DESCS; i++) {
++		struct _tx_ring *tx_ring = &sw->tx_ring;
++		struct tx_desc *desc = &(tx_ring)->desc[i];
++		struct sk_buff *skb = sw->tx_ring.buff_tab[i];
++
++		if (!skb)
++			continue;
++
++		dma_unmap_single(sw->dev, desc->sdp, skb->len, DMA_TO_DEVICE);
++		dev_kfree_skb(skb);
 +	}
 +}
 +
@@ -3764,7 +3749,6 @@ index 000000000..e2db63687
 +		     CRC_STRIPPING, &sw->regs->mac_glob_cfg);
 +
 +	if ((err = init_rings(sw)) != 0) {
-+		destroy_rings(sw);
 +		err = -ENOMEM;
 +		goto err_free;
 +	}
@@ -3851,8 +3835,8 @@ index 000000000..e2db63687
 +	struct net_device *dev = platform_get_drvdata(pdev);
 +	struct sw *sw = netdev_priv(dev);
 +	int i;
-+	destroy_rings(sw);
 +
++	destroy_rings(sw);
 +	for (i = 3; i >= 0; i--) {
 +		if (switch_port_tab[i]) {
 +			struct port *port = switch_port_tab[i];
@@ -3895,7 +3879,7 @@ index 000000000..e2db63687
 +MODULE_ALIAS("platform:cns3xxx_eth");
 diff --git a/drivers/spi/spi-cns3xxx.c b/drivers/spi/spi-cns3xxx.c
 new file mode 100644
-index 000000000..63019862e
+index 00000000..63019862
 --- /dev/null
 +++ b/drivers/spi/spi-cns3xxx.c
 @@ -0,0 +1,448 @@
@@ -4349,7 +4333,7 @@ index 000000000..63019862e
 +EXPORT_SYMBOL_GPL(cns3xxx_spi_tx_rx);
 diff --git a/include/linux/platform_data/cns3xxx.h b/include/linux/platform_data/cns3xxx.h
 new file mode 100644
-index 000000000..f286d0dfe
+index 00000000..f286d0df
 --- /dev/null
 +++ b/include/linux/platform_data/cns3xxx.h
 @@ -0,0 +1,26 @@
