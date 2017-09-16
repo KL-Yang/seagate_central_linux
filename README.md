@@ -29,4 +29,8 @@ A new kernel (kernel and kernel modules only) can be found here
 https://drive.google.com/file/d/0B-PZDFHXqH6pWHBqR1ZUNkJPTk0/view?usp=sharing
 MD5: 4b3ac00ac9e6eeafa7d4526bca98c351
 
+Debian Stretch with linux-4.4.88 kernel.
+https://drive.google.com/file/d/0B-PZDFHXqH6pZ0FYT2FjVkhMUVk/view?usp=sharing 
+MD5: 72ef5ff3a270ede0a2315e52a81051c6
+
 This is a Wip patch, use ON YOUR OWN RISK.
