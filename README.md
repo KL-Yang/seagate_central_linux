@@ -1,10 +1,11 @@
-# Seagate_central_linux
+# Seagate_central_linux (Single Disk Version)
 
-For linux-3.18.y kernel, use kernel-3.18 branch, master branch update to linux-4.4.y kernel.
+For linux-3.18.y and 4.4.y kernel, use corresponding branch; master is updated to 4.19.y.
 
-The 0001 and 0002 patches are merged OpenWRT 15.05's patch of cns3xxx kernel, they are merged for convinence.
-Patch 0003 fixed the ethernet setup problem that specific to Seagate Central. config_seagate_smp is a working
-example of kernel configuration.
+The 4.19.y kernel is still WIP, support file will be merged gradually.
+Foundamental patches are from OpenWRT of cns3xxx kernel, they are copied and merged for convinence.
+There are aslo a few patch to fix the ethernet setup problems that specific to Seagate Central. 
+config_seagate_smp is a working example of kernel configuration.
 
 USB and RTC is not working. USB is likely due to missing PHY/VBUS configuration. SATA, Ethernet and SMP are 
 working fine in my test of compiling the kernel itself on Seagate Central with -j2.
