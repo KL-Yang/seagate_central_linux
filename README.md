@@ -1,17 +1,18 @@
 # Seagate_central_linux (Single Disk Version)
 
-For linux-3.18.y and 4.4.y kernel, use corresponding branch; master is updated to 4.19.y.
+For linux-3.18.y and 4.4.y kernel, use corresponding branch; master is updated to 4.19.y, WIP.
 
-The 4.19.y kernel is still WIP. Copy the files in files directory overlay to linux-4.19, 
-then apply the patch accordingly. Foundamental patches are from OpenWRT of cns3xxx kernel, 
-they are copied and merged for convinence.
-One of the hacky patch is to fix the ethernet setup problems that specific to Seagate Central. 
+To compile, copy and overlay the files to linux-4.19.y, then apply the patch accordingly. 
+For native compile, use command: $LOADADDR=0x02000000 make uImage.
+The foundamental patches are from OpenWRT, they are copied and merged here for convinence.
+One of the hacky patch is to fix the ethernet configuration that is specific to Seagate Central. 
 config_seagate_smp is a working example of kernel configuration.
 
-USB and RTC is not working yet. USB is likely due to missing PHY/VBUS configuration. SATA, Ethernet and SMP are 
-working fine in my test of compiling the kernel itself on Seagate Central with -j2.
+USB and RTC is not working yet. USB is likely due to missing PHY/VBUS configuration. 
+SATA, Ethernet and SMP are working fine in my test of compiling the kernel itself natively with -j2.
 
-Kernel can be compiled with command: $LOADADDR=0x02000000 make uImage
+# Performance
+iperf3 120 seconds average sending and receiving are 532 Mbits/sec and 487 Mbits/sec.
 
 # Prebuild images
 Kernel and Rootfs, TO BE Rebuild based on Debian Buster. Older version refer to older branch. 
