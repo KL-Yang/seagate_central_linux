@@ -1,0 +1,50 @@
+From 4720ed09658ea4af31c6940ab33313f658de54f5 Mon Sep 17 00:00:00 2001
+From: yangkunlun <yangkunlun@gmail.com>
+Date: Sat, 4 May 2019 13:45:29 +0800
+Subject: [PATCH 4/8] OpenWRT 025_smp_support
+
+---
+ arch/arm/mach-cns3xxx/Kconfig  | 3 +++
+ arch/arm/mach-cns3xxx/Makefile | 2 ++
+ arch/arm/mach-cns3xxx/core.h   | 1 +
+ 3 files changed, 6 insertions(+)
+
+diff --git a/arch/arm/mach-cns3xxx/Kconfig b/arch/arm/mach-cns3xxx/Kconfig
+index 1ecf54669..190bc4e76 100644
+--- a/arch/arm/mach-cns3xxx/Kconfig
++++ b/arch/arm/mach-cns3xxx/Kconfig
+@@ -3,6 +3,9 @@ menuconfig ARCH_CNS3XXX
+ 	bool "Cavium Networks CNS3XXX family"
+ 	depends on ARCH_MULTI_V6
+ 	select ARM_GIC
++	select HAVE_ARM_SCU if SMP
++	select HAVE_ARM_TWD
++	select HAVE_SMP
+ 	help
+ 	  Support for Cavium Networks CNS3XXX platform.
+ 
+diff --git a/arch/arm/mach-cns3xxx/Makefile b/arch/arm/mach-cns3xxx/Makefile
+index a2d09dc3d..e49d11c6c 100644
+--- a/arch/arm/mach-cns3xxx/Makefile
++++ b/arch/arm/mach-cns3xxx/Makefile
+@@ -5,3 +5,5 @@ cns3xxx-y				+= core.o pm.o
+ cns3xxx-$(CONFIG_ATAGS)			+= devices.o
+ cns3xxx-$(CONFIG_PCI)			+= pcie.o
+ cns3xxx-$(CONFIG_MACH_CNS3420VB)	+= cns3420vb.o
++cns3xxx-$(CONFIG_SMP)			+= platsmp.o headsmp.o
++cns3xxx-$(CONFIG_HOTPLUG_CPU)		+= hotplug.o
+diff --git a/arch/arm/mach-cns3xxx/core.h b/arch/arm/mach-cns3xxx/core.h
+index dc5df7f1e..e09fa2ce9 100644
+--- a/arch/arm/mach-cns3xxx/core.h
++++ b/arch/arm/mach-cns3xxx/core.h
+@@ -13,6 +13,7 @@
+ 
+ #include <linux/reboot.h>
+ 
++extern struct smp_operations cns3xxx_smp_ops;
+ extern void cns3xxx_timer_init(void);
+ 
+ #ifdef CONFIG_CACHE_L2X0
+-- 
+2.11.0
+

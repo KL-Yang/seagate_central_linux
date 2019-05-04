@@ -1,0 +1,58 @@
+From 2c583abdc256f6405addd433551b9847240e771e Mon Sep 17 00:00:00 2001
+From: yangkunlun <yangkunlun@gmail.com>
+Date: Sat, 4 May 2019 13:47:50 +0800
+Subject: [PATCH 6/8] KL-Yang fixed_compile_and_dma_mask.
+
+---
+ arch/arm/mach-cns3xxx/core.c    | 7 ++++---
+ arch/arm/mach-cns3xxx/hotplug.c | 2 +-
+ 2 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/arch/arm/mach-cns3xxx/core.c b/arch/arm/mach-cns3xxx/core.c
+index 7d5a44a06..ff50a1e49 100644
+--- a/arch/arm/mach-cns3xxx/core.c
++++ b/arch/arm/mach-cns3xxx/core.c
+@@ -125,6 +125,7 @@ static int cns3xxx_set_oneshot(struct clock_event_device *clk)
+ 
+ 	/* period set, and timer enabled in 'next_event' hook */
+ 	ctrl |= (1 << 2) | (1 << 9);
++	writel(0, cns3xxx_tmr1 + TIMER1_AUTO_RELOAD_OFFSET);
+ 	writel(ctrl, cns3xxx_tmr1 + TIMER1_2_CONTROL_OFFSET);
+ 	return 0;
+ }
+@@ -135,7 +136,7 @@ static int cns3xxx_set_periodic(struct clock_event_device *clk)
+ 	int pclk = cns3xxx_cpu_clock() / 8;
+ 	int reload;
+ 
+-	reload = pclk * 20 / (3 * HZ) * 0x25000;
++	reload = pclk * 1000000 / HZ;
+ 	writel(reload, cns3xxx_tmr1 + TIMER1_AUTO_RELOAD_OFFSET);
+ 	ctrl |= (1 << 0) | (1 << 2) | (1 << 9);
+ 	writel(ctrl, cns3xxx_tmr1 + TIMER1_2_CONTROL_OFFSET);
+@@ -162,8 +163,8 @@ static struct clock_event_device cns3xxx_tmr1_clockevent = {
+ 	.set_state_oneshot	= cns3xxx_set_oneshot,
+ 	.tick_resume		= cns3xxx_shutdown,
+ 	.set_next_event		= cns3xxx_timer_set_next_event,
+-	.rating			= 350,
+-	.cpumask		= cpu_all_mask,
++	.rating			= 300,
++	.cpumask		= cpu_possible_mask,
+ };
+ 
+ static void __init cns3xxx_clockevents_init(unsigned int timer_irq)
+diff --git a/arch/arm/mach-cns3xxx/hotplug.c b/arch/arm/mach-cns3xxx/hotplug.c
+index be0d499a3..5cb5d2fec 100644
+--- a/arch/arm/mach-cns3xxx/hotplug.c
++++ b/arch/arm/mach-cns3xxx/hotplug.c
+@@ -13,7 +13,7 @@
+ #include <linux/kernel.h>
+ #include <linux/errno.h>
+ #include <linux/smp.h>
+-
++#include <asm/cp15.h>
+ #include <asm/cacheflush.h>
+ 
+ extern volatile int pen_release;
+-- 
+2.11.0
+

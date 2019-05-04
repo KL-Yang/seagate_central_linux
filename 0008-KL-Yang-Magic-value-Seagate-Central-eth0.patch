@@ -1,0 +1,68 @@
+From 26d049b32655af6659115a26205819eb911a048c Mon Sep 17 00:00:00 2001
+From: yangkunlun <yangkunlun@gmail.com>
+Date: Sat, 4 May 2019 14:28:33 +0800
+Subject: [PATCH 8/8] KL-Yang Magic-value-Seagate-Central-eth0
+
+---
+ drivers/net/ethernet/cavium/cns3xxx_eth.c | 38 +++++++++++++++++++++++++++++++
+ 1 file changed, 38 insertions(+)
+
+diff --git a/drivers/net/ethernet/cavium/cns3xxx_eth.c b/drivers/net/ethernet/cavium/cns3xxx_eth.c
+index 455649942..422ec5a96 100644
+--- a/drivers/net/ethernet/cavium/cns3xxx_eth.c
++++ b/drivers/net/ethernet/cavium/cns3xxx_eth.c
+@@ -95,6 +95,19 @@
+ #define MAC1_RX_ERROR 0x00200000
+ #define MAC2_RX_ERROR 0x00400000
+ 
++/* MAC Clock - Seagate Central u-boot */
++#define MAC0_CLOCK_ENABLE   (1<<7)
++#define MAC1_CLOCK_ENABLE   (1<<15)
++#define MAC2_CLOCK_ENABLE   (1<<23)
++
++#define GMII_CLOCK_SKEW     0x00000050
++#define MAC_SPEED_1000          2
++#define MAC_SPEED_100           1
++#define MAC_SPEED_10            0
++
++#define MAC_DUPLEX_FULL         1
++#define MAC_DUPLEX_HALF         0
++
+ struct tx_desc
+ {
+ 	u32 sdp; /* segment data pointer */
+@@ -1254,6 +1267,31 @@ static int eth_init_one(struct platform_device *pdev)
+ 		netif_carrier_off(dev);
+ 		dev = 0;
+ 	}
++	//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
++	//The magic configuration values for Seagate Personal Cloud
++	__raw_writel(0x5fbe79, regs+4*3);	//regs[3]
++	__raw_writel(0x47be7a, regs+4*4);
++	__raw_writel(0x47a516, regs+4*6);
++	__raw_writel(0x000203, regs+4*34);
++        __raw_writel(0x20001,  regs+4*39);
++        __raw_writel(0x30005,  regs+4*40);
++        __raw_writel(0x3e003e00, regs+4*41);
++	__raw_writel(0x3f, regs+4*42);
++	__raw_writel(0xffff0000, regs+4*43);
++
++	//Those magic is from U-boot, the following is required!
++    	temp = GMII_CLOCK_SKEW;
++	__raw_writel(temp, &mdio_regs->clk_skew_ctrl);
++
++    	temp = __raw_readl(&mdio_regs->phy_auto_addr);
++    	temp |= MAC0_CLOCK_ENABLE;
++	__raw_writel(temp, &mdio_regs->phy_auto_addr);
++
++	//for(i=0; i<128; i++) {
++	//	temp = __raw_readl(regs+4*i);
++	//	printk("ETH[%4u]: %x\n", i, temp);
++	//}
++	//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+ 
+ 	return 0;
+ 
+-- 
+2.11.0
+
