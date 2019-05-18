@@ -15,9 +15,12 @@ SATA, Ethernet and SMP are working fine in my test of compiling the kernel itsel
 iperf3 120 seconds average sending and receiving are 532 Mbits/sec and 487 Mbits/sec.
 
 # Prebuild images
-Kernel and Rootfs, TO BE Rebuild based on Debian Buster. Older version refer to older branch. 
+All the thanks goes to Debian and OpenWRT. Kerenl 4.19.41 and Debian Buster Rootfs:
+https://drive.google.com/open?id=1RArbF_jtwHtqGJVlQWD_X0lkkJKFC_6d
 
-All the thanks goes to OpenWRT. Some discussion can be found on http://forum.doozan.com/read.php?2,22114
+/dev/sda1	/boot
+/dev/sda2	swap
+/dev/sda3	/
 
 The kernel is built on Seagate Central. After booting, find the DHCP address on you router, ssh login, 
 and root password is password.
