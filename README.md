@@ -16,18 +16,17 @@ iperf3 120 seconds average sending and receiving are 532 Mbits/sec and 487 Mbits
 
 # Prebuild images
 All the thanks goes to Debian and OpenWRT. Kerenl 4.19.41 and Debian Buster Rootfs:
-https://drive.google.com/open?id=1RArbF_jtwHtqGJVlQWD_X0lkkJKFC_6d
 
-/dev/sda1	/boot
-/dev/sda2	swap
-/dev/sda3	/
+https://drive.google.com/open?id=1RArbF_jtwHtqGJVlQWD_X0lkkJKFC_6d
 
 The kernel is built on Seagate Central. After booting, find the DHCP address on you router, ssh login, 
 and root password is password.
 Note, the MAC address was set to a random value by me, it cannot read the value in your firmware.
+Change according to your device.
 
-Unpack and copy uImage to the first (sda1) partition, and copy the rootfs to sda3, it should boot.
+Unpack and copy uImage to the first (sda1) partition, ext2, and copy the rootfs to sda3, ext4, it should boot.
 The stock uboot seems passing kernel parameters in a strange way, the rootfs must be seat on sda3. 
 You may need force kernel command line argument to put rootfs on other partition.
+The /dev/sda2 is used as swap.
 
-This is a Wip patch, use ON YOUR OWN RISK.
+Use ON YOUR OWN RISK.
