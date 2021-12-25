@@ -1,5 +1,7 @@
 # Seagate_central_linux (Single Disk Version)
 
+*note bertofurth get usb fixed https://github.com/bertofurth/Seagate-Central-Slot-In-v5.x-Kernel*
+
 For linux-3.18.y and 4.4.y kernel, use corresponding branch; master is updated to 4.19.y, WIP.
 
 To compile, copy and overlay the files to linux-4.19.y, then apply the patch accordingly. 
